@@ -1,0 +1,34 @@
+{
+  "name": "texas-holdem",
+  "version": "1.0.0",
+  "description": "A simple multiplayer Texas Hold'em Poker game.",
+  "author": "Gaby Roland & Travis Van Sciver",
+  "main": "app.js",
+  "contributors": [
+    {
+      "name": "Gaby Roland",
+      "email": "groland@masonlive.gmu.edu"
+    },
+    {
+      "name": "Travis Van Sciver",
+      "email": "tvansciv@masonlive.gmu.edu"
+    }
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^2.3.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/groland-mason/texas-holdem.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/groland-mason/texas-holdem/issues"
+  },
+  "homepage": "https://github.com/groland-mason/texas-holdem#readme"
+}

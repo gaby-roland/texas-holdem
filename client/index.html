@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet/less" type="text/css" href="css/styles.less">
+        <script src="vendor/less-js/less.min.js" type="text/javascript"></script>
+        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+        <script src="https://unpkg.com/vue"></script>
+        <script>
+            var socket = io();
+    
+            
+            // // Emit message1 to client, with some data
+            // var button = function() {
+            //         socket.emit('button', {
+            //         msg: 'someone clicked a button'
+            //     });
+            // }
+    
+            // Capture message from server, with some data
+            // socket.on('server', function(data) {
+            //     console.log('server: ' + data.msg);
+            // });
+        </script>
+    </head>
+    <body>
+        <div class="vue-container">
+            <div class="table">
+                <div class="card-place">
+                    <card v-for="(card, index) in five_cards" :card="card"></card>
+                </div>
+                <div class="players">
+                    <div v-for="(value, index) in players"
+                          class="player" 
+                          :class="['player-' + (index + 1), {'playing': player_playing === index}]">
+                        <div class="bank">
+                            <div class="bank-value">{{ value.bank - value.onTable }}</div>
+                            <div class="chips v-500" v-if="(value.bank - value.onTable) / 500 >= 1"></div>
+                            <div class="chips v-100" v-if="((value.bank - value.onTable) % 500) / 100 >= 1"></div>
+                            <div class="chips v-25" v-if="(((value.bank - value.onTable) % 500) % 100) / 25 >= 1"></div>
+                            <div class="chips v-10" v-if="((((value.bank - value.onTable) % 500) % 100) % 25) / 10 >= 1"></div>
+                            <div class="chips v-5" v-if="(((((value.bank - value.onTable) % 500) % 100) % 25) % 10) / 5 >= 1"></div>
+                            <div class="chips v-1" v-if="((((((value.bank - value.onTable) % 500) % 100) % 25) % 10) % 5) >= 1"></div>
+                        </div>
+                        <div class="avatar" :style="{backgroundColor: value.color || 'dodgerblue'}"></div>
+                        <div class="name">{{value.name}}</div>
+                        <div class="bet">
+                            <div class="bet-value">
+                                {{ value.onTable }}
+                            </div>
+                            <div class="chip-500">	
+                                <div class="chips v-500" v-for="(n, i) in ((value.onTable - (value.onTable % 500)) / 500)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(value.onTable) / 500 >= 1"></div>
+                            </div>
+                            <div class="chip-100">	
+                                <div class="chips v-100" v-for="(n, i) in (((value.onTable % 500) - ((value.onTable % 500) % 100)) / 100)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="((value.onTable) % 500) / 100 >= 1"></div>
+                            </div>
+                            <div class="chip-25">	
+                                <div class="chips v-25" v-for="(n, i) in ((((value.onTable % 500) % 100) - (((value.onTable % 500) % 100) % 25)) / 25)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((value.onTable) % 500) % 100) / 25 >= 1"></div>
+                            </div>
+                            <div class="chip-10">	
+                                <div class="chips v-10" v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) - ((((value.onTable % 500) % 100) % 25) %10)) / 10)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="((((value.onTable) % 500) % 100) % 25) / 10 >= 1"></div>
+                            </div>
+                            <div class="chip-5">
+                                <div class="chips v-5" v-for="(n, i) in ((((((value.onTable % 500) % 100) % 25) %10) - (((((value.onTable % 500) % 100) % 25) %10) % 5)) / 5)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((((value.onTable) % 500) % 100) % 25) % 10) / 5 >= 1"></div>
+                            </div>
+                            <div class="chip-1">
+                                <div class="chips v-1" v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) %10) % 5)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((((value.onTable % 500) % 100) % 25) %10) % 5) >= 1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="bouton" @click="">Refresh</button>
+        </div>
+        <script>
+            Vue.component('card', {
+	            template: `<div class="card" :class="['suits-' + card.suit, 'values-' + card.value]">
+		            <h1>{{card.value}}</h1>
+	            	<div class="suits" :class="card.suit"></div>
+		            <h1>{{card.value}}</h1>
+	            </div>`,
+	            props: ['card']
+            });
+
+            let app = new Vue({
+                el: '.vue-container',
+                data: {
+                    player_playing: 0,
+                    players: [],
+                    five_cards: [],
+                }
+            });
+
+            socket.on('players', function(data) {
+                app.players = data.players;
+            });
+            socket.on('cards', function(data) {
+                app.five_cards = data.cards;
+            });
+        </script>
+    </body>
+  </html>
