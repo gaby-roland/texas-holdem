@@ -19,7 +19,7 @@ var playingList = [];
 var waitingList = [];
 var HAND_IN_PROGRESS = false;
 
-var allCards = pokerUtil.generateNewDeck();
+var originalDeck = pokerUtil.generateNewDeck();
 
 // Define player object
 var Player = function(id) {
@@ -34,8 +34,8 @@ var Player = function(id) {
 
 var fives = [];
 for (let i = 0; i < 5; i++) {
-    let rand_id = parseInt(Math.random() * allCards.length)
-    fives.push(allCards[rand_id])
+    let rand_id = parseInt(Math.random() * originalDeck.length)
+    fives.push(originalDeck[rand_id])
 }
 
 var io = require('socket.io')(serv, {});
@@ -67,7 +67,7 @@ var currentDeck = [];
 setInterval(function() {
     if (playingList.length >= 8 && !HAND_IN_PROGRESS) {
         HAND_IN_PROGRESS = true;
-        currentDeck = allCards.slice();
+        currentDeck = originalDeck.slice();
         pokerUtil.dealHands(playingList, currentDeck);
     }
 
