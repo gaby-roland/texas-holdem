@@ -65,7 +65,7 @@ io.sockets.on('connection', function(socket) {
 
 var currentDeck = [];
 setInterval(function() {
-    if (playingList.length >= 8 && !HAND_IN_PROGRESS) {
+    if (playingList.length >= 2 && !HAND_IN_PROGRESS) {
         HAND_IN_PROGRESS = true;
         currentDeck = originalDeck.slice();
         pokerUtil.dealHands(playingList, currentDeck);
