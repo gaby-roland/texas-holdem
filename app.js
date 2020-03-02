@@ -1,3 +1,5 @@
+var pokerUtil = require('./server/pokerUtil');
+
 var express = require('express');
 var app = express();
 var serv = require('http').Server(app);
@@ -11,29 +13,23 @@ app.use(express.static(__dirname + '/client'));
 serv.listen(2000);
 console.log("Server started.");
 
-var SOCKET_LIST = {};
-var PLAYER_LIST = {};
+// -----------------------------------------------------
+var socketList = [];
+var playingList = [];
+var waitingList = [];
+var HAND_IN_PROGRESS = false;
+
+var allCards = pokerUtil.generateNewDeck();
 
 // Define player object
 var Player = function(id) {
     var self = {
         id:id,
         name:id,
-        bank:1000
+        bank:1000,
+        hand: []
     }
     return self;
-}
-
-var suits = ['S', 'H', 'C', 'D'];
-var values = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-var allCards = [];
-for (let suit of suits) {
-    for (let value of values) {
-        allCards.push({
-            suit: suit,
-            value: value
-        })
-    }
 }
 
 var fives = [];
@@ -45,27 +41,48 @@ for (let i = 0; i < 5; i++) {
 var io = require('socket.io')(serv, {});
 io.sockets.on('connection', function(socket) {
     socket.id = Math.floor(Math.random() * Math.floor(1000)); // Random number between 0 and 1000
-    SOCKET_LIST[socket.id] = socket;
+    console.log('Socket ' + socket.id + ' connected.');
+    addSocketToList(socket);
 
     var player = Player(socket.id);
-    PLAYER_LIST[socket.id] = player;
-    console.log('Player ' + socket.id + ' connected.');
+    socket.on('play', function() {
+        addPlayerToTable(player);
+    });
+
+    socket.on('spectate', function() {
+        removePlayerFromTable(player);
+        checkQueue();
+        console.log('Player ' + player.id + ' is spectating');
+   });
 
     socket.on('disconnect', function() {
-        delete SOCKET_LIST[socket.id];
-        delete PLAYER_LIST[socket.id];
-        console.log('Player ' + socket.id + ' disconnected.');
+        removeSocketFromList(socket);
+        removePlayerFromTable(player);
+        checkQueue();
+        console.log('Player ' + player.id + ' disconnected.');
     });
 });
 
+var currentDeck = [];
 setInterval(function() {
-    var packet = [];
-    for(var id in PLAYER_LIST) {
-        var player = PLAYER_LIST[id];
-        packet.push({name: player.name, bank: player.bank, onTable: 0, hasCards: false});
+    if (playingList.length >= 8 && !HAND_IN_PROGRESS) {
+        HAND_IN_PROGRESS = true;
+        currentDeck = allCards.slice();
+        pokerUtil.dealHands(playingList, currentDeck);
     }
-    for(var i in SOCKET_LIST) {
-        var socket = SOCKET_LIST[i];
+
+    for(let i = 0; i < socketList.length; i++) {
+        var packet = [];
+        var socket = socketList[i];
+        for(let j = 0; j < playingList.length; j++) {
+            var player = playingList[j];
+            if (player.id == socket.id) {
+                packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: 999, hasCards: false});
+            }
+            else{
+                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: 999, hasCards: false});
+            }
+        }
         socket.emit('players', {
             players: packet
         });
@@ -74,3 +91,64 @@ setInterval(function() {
         });
     }
 }, 1000/25);
+
+function addSocketToList(socket) {
+    if (!socketList.includes(socket))
+    {
+        socketList.push(socket);
+    }
+}
+
+function removeSocketFromList(socket) {
+    for (let i = 0; i < socketList.length; i++)
+    {
+        if (socketList[i] == socket)
+        {
+            socketList.splice(i, 1);
+            break;
+        }
+    }
+}
+
+function addPlayerToTable(player) {
+    if (!playingList.includes(player) && !waitingList.includes(player)) {
+        if (playingList.length < 8) {
+            player.name = "Player" + (playingList.length + 1);
+            playingList.push(player);
+            console.log('Player ' + player.id + ' joined the table');
+        }
+        else {
+            waitingList.push(player);
+            console.log('Player ' + player.id + ' added to the queue');
+        }
+    }
+}
+
+function removePlayerFromTable(player) {
+    player.name = player.id;
+    for (let i = 0; i < playingList.length; i++)
+    {
+        if (playingList[i] == player)
+        {
+            playingList.splice(i, 1);
+            break;
+        }
+    }
+    for (let i = 0; i < waitingList.length; i++)
+    {
+        if (waitingList[i] == player)
+        {
+            waitingList.splice(i, 1);
+            break;
+        }
+    }
+}
+
+function checkQueue() {
+    while (playingList.length < 8 && waitingList.length > 0) {
+        var firstPlayerInQueue = waitingList.shift();
+        firstPlayerInQueue.name = "Player" + (playingList.length + 1);
+        playingList.push(firstPlayerInQueue);
+        console.log('Player ' + firstPlayerInQueue.id + ' moved from queue to table');
+    }
+}

@@ -66,10 +66,14 @@
                                 <div class="chips v-1" v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) %10) % 5)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((((value.onTable % 500) % 100) % 25) %10) % 5) >= 1"></div>
                             </div>
                         </div>
+                        <div class="hand">
+                            <card v-for="(card, index) in value.hand" :card="card"></card>
+                        </div>
                     </div>
                 </div>
             </div>
-            <button class="bouton" @click="">Refresh</button>
+            <button class="button" @click="play">Play</button>
+            <button class="button" @click="spectate">Spectate</button>
         </div>
         <script>
             Vue.component('card', {
@@ -86,7 +90,15 @@
                 data: {
                     player_playing: 0,
                     players: [],
-                    five_cards: [],
+                    five_cards: []
+                },
+                methods: {
+                    play: function (event) {
+                        socket.emit('play');
+                    },
+                    spectate: function (event) {
+                        socket.emit('spectate');
+                    }
                 }
             });
 

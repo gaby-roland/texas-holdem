@@ -267,6 +267,19 @@ html, body{
 				box-shadow:0px 5px 0px rgba(0, 0, 0, .2)
 			}
 		}
+		.hand{
+			height:100px;
+			width:115px;
+			position:absolute;
+			top:50%;
+			left:50%;
+			transform:translateX(-50%) translateY(-50%);
+			box-sizing:border-box;
+			z-index:20;
+			.card:not(:last-child){
+				margin-right:15px;
+			}
+		}
 		.name{
 			font-family:"Houschka Rounded";
 			text-align:center;
@@ -327,9 +340,6 @@ html, body{
 			top:50%;
 			right:0px;	
 			transform:translatex(50%) translatey(-50%) rotatez(90deg);
-			.name{
-				transform:rotatez(0deg);
-			}
 		}
 		&.player-5{
 			top:0px;
@@ -372,7 +382,7 @@ html, body{
 	}
 }
 
-.bouton{
+.button{
 	background-color:#515260;
 	color:white;
 	text-transform:uppercase;
