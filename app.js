@@ -15,7 +15,7 @@ console.log("Server started.");
 
 // -----------------------------------------------------
 var socketList = [];
-var playingList = [];
+var playerList = [];
 var waitingList = [];
 var HAND_IN_PROGRESS = false;
 
@@ -65,17 +65,17 @@ io.sockets.on('connection', function(socket) {
 
 var currentDeck = [];
 setInterval(function() {
-    if (playingList.length >= 2 && !HAND_IN_PROGRESS) {
+    if (playerList.length >= 2 && !HAND_IN_PROGRESS) {
         HAND_IN_PROGRESS = true;
         currentDeck = originalDeck.slice();
-        pokerUtil.dealHands(playingList, currentDeck);
+        pokerUtil.dealHands(playerList, currentDeck);
     }
 
     for(let i = 0; i < socketList.length; i++) {
         var packet = [];
         var socket = socketList[i];
-        for(let j = 0; j < playingList.length; j++) {
-            var player = playingList[j];
+        for(let j = 0; j < playerList.length; j++) {
+            var player = playerList[j];
             if (player.id == socket.id) {
                 packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: 999, hasCards: false});
             }
@@ -111,10 +111,10 @@ function removeSocketFromList(socket) {
 }
 
 function addPlayerToTable(player) {
-    if (!playingList.includes(player) && !waitingList.includes(player)) {
-        if (playingList.length < 8) {
-            player.name = "Player" + (playingList.length + 1);
-            playingList.push(player);
+    if (!playerList.includes(player) && !waitingList.includes(player)) {
+        if (playerList.length < 8) {
+            player.name = "Player" + (playerList.length + 1);
+            playerList.push(player);
             console.log('Player ' + player.id + ' joined the table');
         }
         else {
@@ -126,11 +126,11 @@ function addPlayerToTable(player) {
 
 function removePlayerFromTable(player) {
     player.name = player.id;
-    for (let i = 0; i < playingList.length; i++)
+    for (let i = 0; i < playerList.length; i++)
     {
-        if (playingList[i] == player)
+        if (playerList[i] == player)
         {
-            playingList.splice(i, 1);
+            playerList.splice(i, 1);
             break;
         }
     }
@@ -145,10 +145,10 @@ function removePlayerFromTable(player) {
 }
 
 function checkQueue() {
-    while (playingList.length < 8 && waitingList.length > 0) {
+    while (playerList.length < 8 && waitingList.length > 0) {
         var firstPlayerInQueue = waitingList.shift();
-        firstPlayerInQueue.name = "Player" + (playingList.length + 1);
-        playingList.push(firstPlayerInQueue);
+        firstPlayerInQueue.name = "Player" + (playerList.length + 1);
+        playerList.push(firstPlayerInQueue);
         console.log('Player ' + firstPlayerInQueue.id + ' moved from queue to table');
     }
 }
