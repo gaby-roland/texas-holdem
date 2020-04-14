@@ -19,7 +19,7 @@ var playerList = [];
 var waitingList = [];
 var HAND_IN_PROGRESS = false;
 
-var originalDeck = pokerUtil.generateNewDeck();
+var originalDeck = pokerUtil.generateNewShuffledDeck();
 
 // Define player object
 var Player = function(id) {
