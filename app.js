@@ -1,4 +1,7 @@
 var pokerUtil = require('./server/pokerUtil');
+var log4js = require('log4js');
+var logger = log4js.getLogger();
+logger.level = 'info';
 
 var express = require('express');
 var app = express();
@@ -11,13 +14,39 @@ app.use(express.static(__dirname + '/client'));
 
 // Listen to port 2000
 serv.listen(2000);
-console.log("Server started.");
+logger.info("Server started.");
+
+var io = require('socket.io')(serv, {});
+io.sockets.on('connection', function(socket) {
+    logger.info('Socket with ID ' + socket.id + ' connected to the server.');
+    addSocketToList(socket);
+
+    var player = Player(socket.id);
+    socket.on('play', function() {
+        addPlayerToTable(player);
+    });
+
+    socket.on('spectate', function() {
+        removePlayerFromTable(player);
+        logger.info('Player with ID ' + player.id + ' is spectating.');
+        checkQueue();
+   });
+
+    socket.on('disconnect', function() {
+        removeSocketFromList(socket);
+        removePlayerFromTable(player);
+        logger.info("Socket with ID " + socket.id + ' disconnected from the server.');
+        checkQueue();
+    });
+});
 
 // -----------------------------------------------------
 var socketList = [];
 var playerList = [];
 var waitingList = [];
 var HAND_IN_PROGRESS = false;
+var bigBlindPlayer = 0;
+var playerLimit = 2;
 
 var originalDeck = pokerUtil.generateNewShuffledDeck();
 
@@ -38,49 +67,28 @@ for (let i = 0; i < 5; i++) {
     fives.push(originalDeck[rand_id])
 }
 
-var io = require('socket.io')(serv, {});
-io.sockets.on('connection', function(socket) {
-    socket.id = Math.floor(Math.random() * Math.floor(1000)); // Random number between 0 and 1000
-    console.log('Socket ' + socket.id + ' connected.');
-    addSocketToList(socket);
-
-    var player = Player(socket.id);
-    socket.on('play', function() {
-        addPlayerToTable(player);
-    });
-
-    socket.on('spectate', function() {
-        removePlayerFromTable(player);
-        checkQueue();
-        console.log('Player ' + player.id + ' is spectating');
-   });
-
-    socket.on('disconnect', function() {
-        removeSocketFromList(socket);
-        removePlayerFromTable(player);
-        checkQueue();
-        console.log('Player ' + player.id + ' disconnected.');
-    });
-});
-
 var currentDeck = [];
 setInterval(function() {
     if (playerList.length >= 2 && !HAND_IN_PROGRESS) {
         HAND_IN_PROGRESS = true;
-        currentDeck = originalDeck.slice();
+        currentDeck = pokerUtil.generateNewShuffledDeck();
         pokerUtil.dealHands(playerList, currentDeck);
     }
 
+    sendInfoToClients()
+}, 1000/25);
+
+function sendInfoToClients() {
     for(let i = 0; i < socketList.length; i++) {
         var packet = [];
         var socket = socketList[i];
         for(let j = 0; j < playerList.length; j++) {
             var player = playerList[j];
             if (player.id == socket.id) {
-                packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: 999, hasCards: false});
+                packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: 999, hasCards: true});
             }
             else{
-                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: 999, hasCards: false});
+                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: 999, hasCards: true});
             }
         }
         socket.emit('players', {
@@ -90,7 +98,7 @@ setInterval(function() {
             cards: fives
         });
     }
-}, 1000/25);
+}
 
 function addSocketToList(socket) {
     if (!socketList.includes(socket))
@@ -112,14 +120,14 @@ function removeSocketFromList(socket) {
 
 function addPlayerToTable(player) {
     if (!playerList.includes(player) && !waitingList.includes(player)) {
-        if (playerList.length < 8) {
+        if (playerList.length < playerLimit) {
             player.name = "Player" + (playerList.length + 1);
             playerList.push(player);
-            console.log('Player ' + player.id + ' joined the table');
+            logger.info('Player with ID ' + player.id + ' joined the table.');
         }
         else {
             waitingList.push(player);
-            console.log('Player ' + player.id + ' added to the queue');
+            logger.info('Player with ID ' + player.id + ' added to queue.');
         }
     }
 }
@@ -145,10 +153,10 @@ function removePlayerFromTable(player) {
 }
 
 function checkQueue() {
-    while (playerList.length < 8 && waitingList.length > 0) {
+    while (playerList.length < playerLimit && waitingList.length > 0) {
         var firstPlayerInQueue = waitingList.shift();
         firstPlayerInQueue.name = "Player" + (playerList.length + 1);
         playerList.push(firstPlayerInQueue);
-        console.log('Player ' + firstPlayerInQueue.id + ' moved from queue to table');
+        logger.info('Player with ID ' + firstPlayerInQueue.id + ' moved from queue to table.');
     }
 }
