@@ -1,3 +1,7 @@
+const log4js = require('log4js');
+const logger = log4js.getLogger();
+logger.level = 'info';
+
 module.exports = {
     /**
      * Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
@@ -19,20 +23,20 @@ module.exports = {
         return newDeck.sort(() => Math.random() - 0.5);
     },
     /**
-     * Deal 2 random cards to each player. Remove dealt cards from original deck.
+     * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
      * @param {Array} players - list of players that need to be dealt cards
-     * @param {Array} deck - the current deck of cards containing all cards
+     * @param {Array} deck - the current shuffled deck of cards containing all cards
      * @return {void}
      */
     dealHands: function(players, deck) {
-        console.log('dealing hands...');
+        logger.info("Dealing cards to players.");
         for (let i = 1; i <= 2; i++) {
             for(let j = 0; j < players.length; j++) {
                 var player = players[j];
-                let randomCard = parseInt(Math.random() * deck.length);
-                player.hand.push(deck[randomCard]);
-                deck.splice(randomCard, 1);
-            }  
+                var topCard = deck.shift();
+                player.hand.push(topCard);
+            }
         }
+        logger.info("Cards have been dealt.");
     }
 }
