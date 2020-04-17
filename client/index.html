@@ -72,8 +72,23 @@
                     </div>
                 </div>
             </div>
-            <button class="button" @click="play">Play</button>
-            <button class="button" @click="spectate">Spectate</button>
+            <div class="button-container">
+                <button class="button" @click="play">Play</button>
+                <button class="button" @click="spectate">Spectate</button>
+                <div>
+                    <input v-model="amount" placeholder="Amount">
+                    <button class="button" @click="bet">Bet</button>
+                </div>
+                <div>
+                    <button class="button" @click="call">Call</button>
+                </div>
+                <div>
+                    <button class="button" @click="check">Check</button>
+                </div>
+                <div>
+                    <button class="button" @click="fold">Fold</button>
+                </div>
+            </div>
         </div>
         <script>
             Vue.component('card', {
@@ -90,7 +105,8 @@
                 data: {
                     player_playing: 0,
                     players: [],
-                    five_cards: []
+                    five_cards: [],
+                    amount: 0
                 },
                 methods: {
                     play: function (event) {
@@ -98,6 +114,20 @@
                     },
                     spectate: function (event) {
                         socket.emit('spectate');
+                    },
+                    bet: function (event) {
+                        socket.emit('bet', {
+                            amount: this.amount
+                        });
+                    },
+                    call: function (event) {
+                        socket.emit('call');
+                    },
+                    check: function (event) {
+                        socket.emit('check');
+                    },
+                    fold: function (event) {
+                        socket.emit('fold');
                     }
                 }
             });
