@@ -16,12 +16,15 @@ app.use(express.static(__dirname + '/client'));
 serv.listen(2000);
 logger.info("Server started.");
 
+var socketList = [];
+var playerList = [];
+var waitingList = [];
 var io = require('socket.io')(serv, {});
 io.sockets.on('connection', function(socket) {
     logger.info('Socket with ID ' + socket.id + ' connected to the server.');
     addSocketToList(socket);
 
-    var player = Player(socket.id);
+    var player = pokerUtil.createNewPlayer(socket.id);
     socket.on('play', function() {
         addPlayerToTable(player);
     });
@@ -32,6 +35,10 @@ io.sockets.on('connection', function(socket) {
         checkQueue();
    });
 
+   socket.on('bet', function(data) {
+    console.log('bet: ' + data.amount)
+});
+
     socket.on('disconnect', function() {
         removeSocketFromList(socket);
         removePlayerFromTable(player);
@@ -41,38 +48,25 @@ io.sockets.on('connection', function(socket) {
 });
 
 // -----------------------------------------------------
-var socketList = [];
-var playerList = [];
-var waitingList = [];
-var HAND_IN_PROGRESS = false;
-var bigBlindPlayer = 0;
-var playerLimit = 2;
-
-var originalDeck = pokerUtil.generateNewShuffledDeck();
-
-// Define player object
-var Player = function(id) {
-    var self = {
-        id:id,
-        name:id,
-        bank:1000,
-        hand: []
-    }
-    return self;
-}
 
 var fives = [];
-for (let i = 0; i < 5; i++) {
-    let rand_id = parseInt(Math.random() * originalDeck.length)
-    fives.push(originalDeck[rand_id])
-}
+// for (let i = 0; i < 5; i++) {
+//     let rand_id = parseInt(Math.random() * originalDeck.length)
+//     fives.push(originalDeck[rand_id])
+// }
 
-var currentDeck = [];
+var playerLimit = 2;
+var currentGame;
 setInterval(function() {
-    if (playerList.length >= 2 && !HAND_IN_PROGRESS) {
-        HAND_IN_PROGRESS = true;
-        currentDeck = pokerUtil.generateNewShuffledDeck();
-        pokerUtil.dealHands(playerList, currentDeck);
+    if (playerList.length >= 2) {
+        if (currentGame == null) {
+            currentGame = pokerUtil.createNewGame(playerList, 0);
+        }
+
+        if (!currentGame.started) {
+            currentGame.dealHands();
+        }
+
     }
 
     sendInfoToClients()
