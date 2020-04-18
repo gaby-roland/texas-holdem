@@ -260,11 +260,12 @@ class Game {
                 }
             }
             else {
+                logger.info("Game tied. Splitting the pot.");
                 for(let j = 0; j < this.playerList.length; j++) {
-                    winner.bank = winner.bank + (this.potAmount / 2);
-                    this.completedRounds.concluded = true;
-                    return;
+                    this.playerList[j].bank = this.playerList[j].bank + (this.potAmount / 2);
                 }
+                this.completedRounds.concluded = true;
+                return;
             }
         }
         
