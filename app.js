@@ -31,23 +31,45 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('spectate', function() {
         removePlayerFromTable(player);
-        logger.info('Player with ID ' + player.id + ' is spectating.');
+        logger.info('Player ' + player.id + ' is spectating.');
         checkQueue();
    });
 
     socket.on('bet', function(data) {
-        console.log('bet: ' + data.amount);
+        if (game.inProgress && player == game.playerList[game.playerTurn]) {
+            var amount = parseInt(data.amount);
+            if (game.currentBet < player.chipsOnTable + amount) {
+                game.currentBet = player.chipsOnTable + amount;
+                logger.info("Player " + player.id + ' raised to ' + game.currentBet + '.');
+                player.chipsOnTable = player.chipsOnTable + amount;
+                
+                game.resetBettingRound();
+                player.playedTheirTurn = true;
+                game.nextPlayerTurn();
+            }
+        }
     });
 
     socket.on('call', function(data) {
-        console.log('player called');
+        if (game.inProgress && player == game.playerList[game.playerTurn]) {
+            if (game.currentBet > player.chipsOnTable) {
+                logger.info("Player " + player.id + ' called.');
+                player.chipsOnTable = game.currentBet;
+                player.playedTheirTurn = true;
+                game.nextPlayerTurn();
+            }
+        }
     });
 
     socket.on('check', function(data) {
-        console.log('player checked');
-        player.played = true;
-        currentGame.nextPlayerTurn();
-
+        if (game.inProgress && player == game.playerList[game.playerTurn]) {
+            if (game.currentBet == player.chipsOnTable)
+            {
+                logger.info("Player " + player.id + ' checked.');
+                player.playedTheirTurn = true;
+                game.nextPlayerTurn();
+            }
+        }
     });
 
     socket.on('fold', function(data) {
@@ -64,46 +86,29 @@ io.sockets.on('connection', function(socket) {
 
 // -----------------------------------------------------
 
-var fives = [];
-// for (let i = 0; i < 5; i++) {
-//     let rand_id = parseInt(Math.random() * originalDeck.length)
-//     fives.push(originalDeck[rand_id])
-// }
-
 var playerLimit = 2;
-var currentGame;
+var game = pokerUtil.createNewGame(playerList);
 setInterval(function() {
     sendInfoToClients()
 
     if (playerList.length >= 2) {
-        if (currentGame == null) {
-            currentGame = pokerUtil.createNewGame(playerList, 0);
-        }
-        else if (currentGame.concluded) {
-            var nextDealerPosition = currentGame.dealerPosition + 1;
-            if (nextDealerPosition >= playerList.length)
-            {
-                nextDealerPosition = 0;
-            }
-            currentGame = pokerUtil.createNewGame(playerList, nextDealerPosition);
+        if (!game.inProgress) {
+            game.resetGame();
+            game.dealHands();
         }
 
-        if (!currentGame.started) {
-            currentGame.dealHands();
-        }
-
-        if (currentGame.bettingRoundCompleted) {
-            if (!currentGame.completedFlop) {
-                currentGame.dealFlop();
+        if (game.bettingRoundCompleted) {
+            if (!game.completedFlop) {
+                game.dealFlop();
             }
-            else if (!currentGame.completedTurn) {
-                currentGame.dealTurn();
+            else if (!game.completedTurn) {
+                game.dealTurn();
             }
-            else if (!currentGame.completedRiver) {
-                currentGame.dealRiver();
+            else if (!game.completedRiver) {
+                game.dealRiver();
             }
             else {
-                currentGame.concludeGame();
+                game.concludeGame();
             }
         }
     }
@@ -116,21 +121,21 @@ function sendInfoToClients() {
         for(let j = 0; j < playerList.length; j++) {
             var player = playerList[j];
             if (player.id == socket.id) {
-                packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: player.onTable, hasCards: true});
+                packet.push({name: player.name, color: "", hand: player.cardsInHand, bank: player.bank, onTable: player.chipsOnTable, hasCards: true});
             }
             else{
-                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: player.onTable, hasCards: true});
+                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: player.chipsOnTable, hasCards: true});
             }
         }
         socket.emit('players', {
             players: packet
         });
-        if (currentGame != null) {
+        if (game != null) {
             socket.emit('cards', {
-                cards: currentGame.communityCards
+                cards: game.communityCards
             });
             socket.emit('player_playing', {
-                player: currentGame.playerTurn
+                player: game.playerTurn
             });
         }
     }
@@ -159,17 +164,18 @@ function addPlayerToTable(player) {
         if (playerList.length < playerLimit) {
             player.name = "Player" + (playerList.length + 1);
             playerList.push(player);
-            logger.info('Player with ID ' + player.id + ' joined the table.');
+            logger.info('Player ' + player.id + ' joined the table.');
         }
         else {
             waitingList.push(player);
-            logger.info('Player with ID ' + player.id + ' added to queue.');
+            logger.info('Player ' + player.id + ' added to queue.');
         }
     }
 }
 
 function removePlayerFromTable(player) {
     player.name = player.id;
+    player.resetValues();
     for (let i = 0; i < playerList.length; i++)
     {
         if (playerList[i] == player)
@@ -193,6 +199,6 @@ function checkQueue() {
         var firstPlayerInQueue = waitingList.shift();
         firstPlayerInQueue.name = "Player" + (playerList.length + 1);
         playerList.push(firstPlayerInQueue);
-        logger.info('Player with ID ' + firstPlayerInQueue.id + ' moved from queue to table.');
+        logger.info('Player ' + firstPlayerInQueue.id + ' moved from queue to table.');
     }
 }
