@@ -30,53 +30,35 @@ io.sockets.on('connection', function(socket) {
     });
 
     socket.on('spectate', function() {
+        player.playedTheirTurn = true;
+        player.playingCurrentHand = false;
+        game.concludeGame();
         removePlayerFromTable(player);
         logger.info('Player ' + player.id + ' is spectating.');
         checkQueue();
    });
 
     socket.on('bet', function(data) {
-        if (game.inProgress && player == game.playerList[game.playerTurn]) {
-            var amount = parseInt(data.amount);
-            if (game.currentBet < player.chipsOnTable + amount) {
-                game.currentBet = player.chipsOnTable + amount;
-                logger.info("Player " + player.id + ' raised to ' + game.currentBet + '.');
-                player.chipsOnTable = player.chipsOnTable + amount;
-                
-                game.resetBettingRound();
-                player.playedTheirTurn = true;
-                game.nextPlayerTurn();
-            }
-        }
+        var amount = parseInt(data.amount);
+        game.playerRaise(player, amount);
     });
 
     socket.on('call', function(data) {
-        if (game.inProgress && player == game.playerList[game.playerTurn]) {
-            if (game.currentBet > player.chipsOnTable) {
-                logger.info("Player " + player.id + ' called.');
-                player.chipsOnTable = game.currentBet;
-                player.playedTheirTurn = true;
-                game.nextPlayerTurn();
-            }
-        }
+        game.playerCall(player);
     });
 
     socket.on('check', function(data) {
-        if (game.inProgress && player == game.playerList[game.playerTurn]) {
-            if (game.currentBet == player.chipsOnTable)
-            {
-                logger.info("Player " + player.id + ' checked.');
-                player.playedTheirTurn = true;
-                game.nextPlayerTurn();
-            }
-        }
+        game.playerCheck(player);
     });
 
     socket.on('fold', function(data) {
-        console.log('player folded');
+        game.playerFold(player);
     });
 
     socket.on('disconnect', function() {
+        player.playedTheirTurn = true;
+        player.playingCurrentHand = false;
+        game.concludeGame();
         removeSocketFromList(socket);
         removePlayerFromTable(player);
         logger.info("Socket with ID " + socket.id + ' disconnected from the server.');
@@ -111,6 +93,9 @@ setInterval(function() {
                 game.concludeGame();
             }
         }
+    }
+    else if (game.inProgress) {
+        game.concludeGame();
     }
 }, 1000/25);
 

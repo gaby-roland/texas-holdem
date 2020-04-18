@@ -1,3 +1,4 @@
+const Hand = require('pokersolver').Hand;
 const log4js = require('log4js');
 const logger = log4js.getLogger();
 logger.level = 'info';
@@ -25,6 +26,8 @@ class Player {
 class Game {
     constructor(playerList) {
         this.playerList = playerList;
+        this.smallBlind = 10;
+        this.bigBlind = 20;
         this.currentDeck;
         this.dealerPosition;
         this.playerTurn;
@@ -105,6 +108,22 @@ class Game {
         }
         return players;
     }
+
+    get smallBlindPlayer() {
+        var smallBlindIndex = this.dealerPosition + 1;
+        if (smallBlindIndex >= this.playerList.length) {
+            smallBlindIndex = smallBlindIndex % this.playerList.length;
+        }
+        return this.playerList[smallBlindIndex];
+    }
+
+    get bigBlindPlayer() {
+        var bigBlindIndex = this.dealerPosition + 2;
+        if (bigBlindIndex >= this.playerList.length) {
+            bigBlindIndex = bigBlindIndex % this.playerList.length;
+        }
+        return this.playerList[bigBlindIndex];
+    }
     
     /**
      * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
@@ -119,6 +138,9 @@ class Game {
                 player.cardsInHand.push(topCard);
             }
         }
+        this.smallBlindPlayer.chipsOnTable = this.smallBlind;
+        this.bigBlindPlayer.chipsOnTable = this.bigBlind;
+        this.currentBet = this.bigBlind;
         logger.info("Cards have been dealt.");
         this.completedRounds.started = true;
     }
@@ -128,7 +150,7 @@ class Game {
      */
     dealFlop() {
         logger.info("Dealing the flop.");
-        this.resetBettingRound();
+        this.roundUpBets();
         for (let i = 1; i <= 3; i++) {
             var topCard = this.currentDeck.shift();
             this.communityCards.push(topCard);
@@ -142,7 +164,7 @@ class Game {
      */
     dealTurn() {
         logger.info("Dealing the turn.");
-        this.resetBettingRound();
+        this.roundUpBets();
         var topCard = this.currentDeck.shift();
         this.communityCards.push(topCard);
         logger.info("The turn has been dealt.");
@@ -154,27 +176,129 @@ class Game {
      */
     dealRiver() {
         logger.info("Dealing the river.");
-        this.resetBettingRound();
+        this.roundUpBets();
         var topCard = this.currentDeck.shift();
         this.communityCards.push(topCard);
         logger.info("The river has been dealt.");
         this.completedRounds.river = true;
     }
 
+    playerRaise(player, amount) {
+        if (this.playerCanPlay(player)) {
+            if (this.currentBet < player.chipsOnTable + amount) {
+                this.currentBet = player.chipsOnTable + amount;
+                logger.info("Player " + player.id + ' raised to ' + this.currentBet + '.');
+                player.chipsOnTable = player.chipsOnTable + amount;
+                    
+                this.resetBettingRound();
+                player.playedTheirTurn = true;
+                this.nextPlayerTurn();
+            }
+        }
+    }
+
+    playerCall(player) {
+        if (this.playerCanPlay(player)) {
+            if (this.currentBet > player.chipsOnTable) {
+                logger.info("Player " + player.id + ' called.');
+                player.chipsOnTable = this.currentBet;
+                player.playedTheirTurn = true;
+                this.nextPlayerTurn();
+            }
+        }
+    }
+
+    playerCheck(player) {
+        if (this.playerCanPlay(player)) {
+            if (this.currentBet == player.chipsOnTable)
+            {
+                logger.info("Player " + player.id + ' checked.');
+                player.playedTheirTurn = true;
+                this.nextPlayerTurn();
+            }
+        }
+    }
+
+    playerFold(player) {
+        if (this.playerCanPlay(player)) {
+            logger.info("Player " + player.id + ' folded.');
+            player.playedTheirTurn = true;
+            player.playingCurrentHand = false;
+            this.concludeGame();
+        }
+    }
+
     /**
-     * Finish the game. Reset player hand/bets in preparation for next game.
+     * Finish the game. Determine winner and reset player hand/bets in preparation for next game.
      */
     concludeGame() {
-        logger.info("Game ended. Cleaning up.");
+        logger.info("Game ended.");
+        this.roundUpBets();
+        var winner;
+        if (this.activePlayers < 2) {
+            for(let j = 0; j < this.playerList.length; j++) {
+                var player = this.playerList[j];
+                if (player.playingCurrentHand) {
+                    winner = player;
+                    break;
+                }
+            }
+        }
+        else {
+            var hand1 = Hand.solve(getPlayerFullHand(this.playerList[0].cardsInHand, this.communityCards));
+            var hand2 = Hand.solve(getPlayerFullHand(this.playerList[1].cardsInHand, this.communityCards));
+
+            var winnerHand = Hand.winners([hand1, hand2]);
+            if (winnerHand.length == 1) {
+                if (winnerHand[0] == hand1) {
+                    logger.info("Player " + this.playerList[0].id + " won the game.");
+                    winner = this.playerList[0];
+                }
+                else {
+                    logger.info("Player " + this.playerList[1].id + " won the game.");
+                    winner = this.playerList[1];
+                }
+            }
+            else {
+                for(let j = 0; j < this.playerList.length; j++) {
+                    winner.bank = winner.bank + (this.potAmount / 2);
+                    this.completedRounds.concluded = true;
+                    return;
+                }
+            }
+        }
+        
+        winner.bank = winner.bank + this.potAmount;
         this.completedRounds.concluded = true;
     }
 
     /**
-     * Reset the betting round.
+     * Determine if a player can make a legal move.
+     */
+    playerCanPlay(player) {
+        return this.inProgress && player == this.playerList[this.playerTurn];
+    }
+
+    /**
+     * Reset the betting round. Should be called when someone raises.
      */
     resetBettingRound() {
         for(let j = 0; j < this.playerList.length; j++) {
             this.playerList[j].playedTheirTurn = false;
+        }
+    }
+
+    /**
+     * Round up all the bets. Should be called at the end of a betting round.
+     */
+    roundUpBets() {
+        for(let j = 0; j < this.playerList.length; j++) {
+            var player = this.playerList[j];
+            player.bank = player.bank - player.chipsOnTable;
+            this.potAmount = this.potAmount + player.chipsOnTable;
+            this.currentBet = 0;
+            player.chipsOnTable = 0;
+            player.playedTheirTurn = false;
         }
     }
 
@@ -195,7 +319,7 @@ class Game {
 */
 function generateNewShuffledDeck() {
     var suits = ['S', 'H', 'C', 'D'];
-    var values = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     var newDeck = [];
     for (let suit of suits) {
         for (let value of values) {
@@ -207,6 +331,28 @@ function generateNewShuffledDeck() {
     }
 
     return newDeck.sort(() => Math.random() - 0.5);
+}
+
+function getPlayerFullHand(playerCards, communityCards) {
+    var fullHand = [];
+    for(let j = 0; j < playerCards.length; j++) {
+        var value = playerCards[j].value;
+        if (value == '10') {
+            value = 'T'
+        }
+        var suit = playerCards[j].suit.toLowerCase();
+        fullHand.push(value + suit);
+    }
+
+    for(let j = 0; j < communityCards.length; j++) {
+        var value = communityCards[j].value;
+        if (value == '10') {
+            value = 'T'
+        }
+        var suit = communityCards[j].suit.toLowerCase();
+        fullHand.push(value + suit);
+    }
+    return fullHand;
 }
 
 module.exports = {
