@@ -7,22 +7,58 @@ class Player {
         this.id = id;
         this.name = id;
         this.bank = 1000;
-        this.onTable = 0;
-        this.hand = [];
-        this.played = false;
+
+        this.chipsOnTable = 0;
+        this.cardsInHand = [];
+        this.playedTheirTurn = false;
+        this.playingCurrentHand = false;
+    }
+
+    resetValues() {
+        this.chipsOnTable = 0;
+        this.cardsInHand = [];
+        this.playedTheirTurn = false;
+        this.playingCurrentHand = false;
     }
 }
 
 class Game {
-    constructor(playerList, dealerPosition, currentDeck) {
+    constructor(playerList) {
         this.playerList = playerList;
-        this.currentDeck = currentDeck;
-        this.dealerPosition = dealerPosition;
-        this.playerTurn = (this.dealerPosition + 3 >= this.playerList.length) ? (this.dealerPosition + 3) % this.playerList.length : (this.dealerPosition + 3);
+        this.currentDeck;
+        this.dealerPosition;
+        this.playerTurn;
+        this.communityCards;
+        this.potAmount;
+        this.currentBet;
         this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
+    }
+
+    resetGame() {
+        this.currentDeck = generateNewShuffledDeck();
         this.communityCards = [];
         this.potAmount = 0;
         this.currentBet = 0;
+        this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
+
+        if (this.dealerPosition == null) {
+            this.dealerPosition = 0;
+        }
+        else {
+            var nextDealer = this.dealerPosition + 1;
+            this.dealerPosition = (nextDealer >= this.playerList.length) ? 0 : nextDealer;
+        }
+
+        this.playerTurn = this.dealerPosition + 3;
+        if (this.playerTurn >= this.playerList.length) {
+            this.playerTurn = this.playerTurn % this.playerList.length;
+        }
+
+        for(let j = 0; j < this.playerList.length; j++) {
+            var player = this.playerList[j];
+            player.resetValues();
+            player.playingCurrentHand = true;
+        }
     }
 
     get started() {
@@ -45,15 +81,29 @@ class Game {
         return this.completedRounds.concluded;
     }
 
+    get inProgress() {
+        return this.started && !this.concluded;
+    }
+
     get bettingRoundCompleted() {
         var completed = true;
         for(let j = 0; j < this.playerList.length; j++) {
-            if (this.playerList[j].played == false) {
+            if (this.playerList[j].playedTheirTurn == false) {
                 completed = false;
                 break;
             }
         }
         return completed;
+    }
+
+    get activePlayers() {
+        var players = 0;
+        for(let j = 0; j < this.playerList.length; j++) {
+            if (this.playerList[j].playingCurrentHand) {
+                players++;
+            }
+        }
+        return players;
     }
     
     /**
@@ -66,7 +116,7 @@ class Game {
             for(let j = 0; j < this.playerList.length; j++) {
                 var player = this.playerList[j];
                 var topCard = this.currentDeck.shift();
-                player.hand.push(topCard);
+                player.cardsInHand.push(topCard);
             }
         }
         logger.info("Cards have been dealt.");
@@ -116,22 +166,16 @@ class Game {
      */
     concludeGame() {
         logger.info("Game ended. Cleaning up.");
-        this.resetBettingRound();
-        for(let j = 0; j < this.playerList.length; j++) {
-            this.playerList[j].onTable = 0;
-            this.playerList[j].hand = [];
-        }
         this.completedRounds.concluded = true;
     }
 
     /**
-     * Reset the betting round by setting each player's "played" attribute to false.
+     * Reset the betting round.
      */
     resetBettingRound() {
         for(let j = 0; j < this.playerList.length; j++) {
-            this.playerList[j].played = false;
+            this.playerList[j].playedTheirTurn = false;
         }
-        this.currentBet = 0;
     }
 
     /**
@@ -145,27 +189,27 @@ class Game {
     }
 }
 
-module.exports = {
-    /**
-     * Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
-     * @return {Array} New deck of cards containing 52 cards.
-     */
-    generateNewShuffledDeck: function() {
-        var suits = ['S', 'H', 'C', 'D'];
-        var values = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-        var newDeck = [];
-        for (let suit of suits) {
-            for (let value of values) {
-                newDeck.push({
-                    suit: suit,
-                    value: value
-                })
-            }
+/**
+* Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
+* @return {Array} New deck of cards containing 52 cards.
+*/
+function generateNewShuffledDeck() {
+    var suits = ['S', 'H', 'C', 'D'];
+    var values = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    var newDeck = [];
+    for (let suit of suits) {
+        for (let value of values) {
+            newDeck.push({
+                suit: suit,
+                value: value
+            })
         }
+    }
 
-        return newDeck.sort(() => Math.random() - 0.5);
-    },
+    return newDeck.sort(() => Math.random() - 0.5);
+}
 
+module.exports = {
     /**
      * Create a new player.
      * @param {String} id player id, should match socket id of player
@@ -176,12 +220,11 @@ module.exports = {
     },
 
     /**
-     * Start a new game containing a newly shuffled deck of card.
+     * Start a new game instance.
      * @param {Array} players list of players in the current game
-     * @param {Array} dealerPosition the position of the player who is the current dealer
      * @return {Game} the new game
      */
-    createNewGame: function(players, dealerPosition) {
-        return new Game(players, dealerPosition, this.generateNewShuffledDeck());
+    createNewGame: function(players) {
+        return new Game(players);
     }
 }
