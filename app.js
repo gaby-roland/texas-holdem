@@ -35,9 +35,24 @@ io.sockets.on('connection', function(socket) {
         checkQueue();
    });
 
-   socket.on('bet', function(data) {
-    console.log('bet: ' + data.amount)
-});
+    socket.on('bet', function(data) {
+        console.log('bet: ' + data.amount);
+    });
+
+    socket.on('call', function(data) {
+        console.log('player called');
+    });
+
+    socket.on('check', function(data) {
+        console.log('player checked');
+        player.played = true;
+        currentGame.nextPlayerTurn();
+
+    });
+
+    socket.on('fold', function(data) {
+        console.log('player folded');
+    });
 
     socket.on('disconnect', function() {
         removeSocketFromList(socket);
@@ -58,18 +73,40 @@ var fives = [];
 var playerLimit = 2;
 var currentGame;
 setInterval(function() {
+    sendInfoToClients()
+
     if (playerList.length >= 2) {
         if (currentGame == null) {
             currentGame = pokerUtil.createNewGame(playerList, 0);
+        }
+        else if (currentGame.concluded) {
+            var nextDealerPosition = currentGame.dealerPosition + 1;
+            if (nextDealerPosition >= playerList.length)
+            {
+                nextDealerPosition = 0;
+            }
+            currentGame = pokerUtil.createNewGame(playerList, nextDealerPosition);
         }
 
         if (!currentGame.started) {
             currentGame.dealHands();
         }
 
+        if (currentGame.bettingRoundCompleted) {
+            if (!currentGame.completedFlop) {
+                currentGame.dealFlop();
+            }
+            else if (!currentGame.completedTurn) {
+                currentGame.dealTurn();
+            }
+            else if (!currentGame.completedRiver) {
+                currentGame.dealRiver();
+            }
+            else {
+                currentGame.concludeGame();
+            }
+        }
     }
-
-    sendInfoToClients()
 }, 1000/25);
 
 function sendInfoToClients() {
@@ -79,18 +116,23 @@ function sendInfoToClients() {
         for(let j = 0; j < playerList.length; j++) {
             var player = playerList[j];
             if (player.id == socket.id) {
-                packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: 999, hasCards: true});
+                packet.push({name: player.name, color: "", hand: player.hand, bank: player.bank, onTable: player.onTable, hasCards: true});
             }
             else{
-                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: 999, hasCards: true});
+                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: player.onTable, hasCards: true});
             }
         }
         socket.emit('players', {
             players: packet
         });
-        socket.emit('cards', {
-            cards: fives
-        });
+        if (currentGame != null) {
+            socket.emit('cards', {
+                cards: currentGame.communityCards
+            });
+            socket.emit('player_playing', {
+                player: currentGame.playerTurn
+            });
+        }
     }
 }
 

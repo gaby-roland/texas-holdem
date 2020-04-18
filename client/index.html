@@ -138,6 +138,9 @@
             socket.on('cards', function(data) {
                 app.five_cards = data.cards;
             });
+            socket.on('player_playing', function(data) {
+                app.player_playing = data.player;
+            });
         </script>
     </body>
   </html>

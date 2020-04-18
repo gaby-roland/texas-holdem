@@ -7,37 +7,65 @@ class Player {
         this.id = id;
         this.name = id;
         this.bank = 1000;
+        this.onTable = 0;
         this.hand = [];
+        this.played = false;
     }
 }
 
 class Game {
-    constructor(players, dealerPosition, deck) {
-        this.players = players;
-        this.deck = deck;
+    constructor(playerList, dealerPosition, currentDeck) {
+        this.playerList = playerList;
+        this.currentDeck = currentDeck;
         this.dealerPosition = dealerPosition;
+        this.playerTurn = (this.dealerPosition + 3 >= this.playerList.length) ? (this.dealerPosition + 3) % this.playerList.length : (this.dealerPosition + 3);
         this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
         this.communityCards = [];
         this.potAmount = 0;
+        this.currentBet = 0;
     }
 
     get started() {
         return this.completedRounds.started;
     }
 
+    get completedFlop() {
+        return this.completedRounds.flop;
+    }
+
+    get completedTurn() {
+        return this.completedRounds.turn;
+    }
+
+    get completedRiver() {
+        return this.completedRounds.river;
+    }
+
     get concluded() {
         return this.completedRounds.concluded;
     }
 
+    get bettingRoundCompleted() {
+        var completed = true;
+        for(let j = 0; j < this.playerList.length; j++) {
+            if (this.playerList[j].played == false) {
+                completed = false;
+                break;
+            }
+        }
+        return completed;
+    }
+    
     /**
      * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
      */
     dealHands() {
         logger.info("Dealing cards to players.");
+        this.resetBettingRound();
         for (let i = 1; i <= 2; i++) {
-            for(let j = 0; j < this.players.length; j++) {
-                var player = this.players[j];
-                var topCard = this.deck.shift();
+            for(let j = 0; j < this.playerList.length; j++) {
+                var player = this.playerList[j];
+                var topCard = this.currentDeck.shift();
                 player.hand.push(topCard);
             }
         }
@@ -49,10 +77,13 @@ class Game {
      * Deal 3 cards (flop) on the table. Remove dealt cards from original deck.
      */
     dealFlop() {
+        logger.info("Dealing the flop.");
+        this.resetBettingRound();
         for (let i = 1; i <= 3; i++) {
-            var topCard = this.deck.shift();
+            var topCard = this.currentDeck.shift();
             this.communityCards.push(topCard);
         }
+        logger.info("The flop (3 cards) have been dealt.");
         this.completedRounds.flop = true;
     }
 
@@ -60,8 +91,11 @@ class Game {
      * Deal 1 card (turn) on the table. Remove dealt card from original deck.
      */
     dealTurn() {
-        var topCard = this.deck.shift();
+        logger.info("Dealing the turn.");
+        this.resetBettingRound();
+        var topCard = this.currentDeck.shift();
         this.communityCards.push(topCard);
+        logger.info("The turn has been dealt.");
         this.completedRounds.turn = true;
     }
 
@@ -69,9 +103,45 @@ class Game {
      * Deal 1 card (river) on the table. Remove dealt card from original deck.
      */
     dealRiver() {
-        var topCard = this.deck.shift();
+        logger.info("Dealing the river.");
+        this.resetBettingRound();
+        var topCard = this.currentDeck.shift();
         this.communityCards.push(topCard);
+        logger.info("The river has been dealt.");
         this.completedRounds.river = true;
+    }
+
+    /**
+     * Finish the game. Reset player hand/bets in preparation for next game.
+     */
+    concludeGame() {
+        logger.info("Game ended. Cleaning up.");
+        this.resetBettingRound();
+        for(let j = 0; j < this.playerList.length; j++) {
+            this.playerList[j].onTable = 0;
+            this.playerList[j].hand = [];
+        }
+        this.completedRounds.concluded = true;
+    }
+
+    /**
+     * Reset the betting round by setting each player's "played" attribute to false.
+     */
+    resetBettingRound() {
+        for(let j = 0; j < this.playerList.length; j++) {
+            this.playerList[j].played = false;
+        }
+        this.currentBet = 0;
+    }
+
+    /**
+     * Simply increment the player turn to allow next player to make a move.
+     */
+    nextPlayerTurn() {
+        this.playerTurn++;
+        if (this.playerTurn >= this.playerList.length) {
+            this.playerTurn = 0;
+        }
     }
 }
 
