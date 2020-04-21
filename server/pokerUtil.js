@@ -28,7 +28,7 @@ class Game {
     constructor(id) {
         this.id = id;
         this.name;
-        this.playerList = [];
+        this.players = [];
         this.waitingList = [];
         this.playerLimit = 2;
         this.smallBlind = 10;
@@ -43,7 +43,7 @@ class Game {
     }
 
     updateGameState() {
-        if (this.playerList.length >= 2) {
+        if (this.players.length >= 2) {
             if (!this.inProgress) {
                 this.resetGame();
                 this.dealHands();
@@ -81,16 +81,16 @@ class Game {
         }
         else {
             var nextDealer = this.dealerPosition + 1;
-            this.dealerPosition = (nextDealer >= this.playerList.length) ? 0 : nextDealer;
+            this.dealerPosition = (nextDealer >= this.players.length) ? 0 : nextDealer;
         }
 
         this.playerTurn = this.dealerPosition + 3;
-        if (this.playerTurn >= this.playerList.length) {
-            this.playerTurn = this.playerTurn % this.playerList.length;
+        if (this.playerTurn >= this.players.length) {
+            this.playerTurn = this.playerTurn % this.players.length;
         }
 
-        for(let j = 0; j < this.playerList.length; j++) {
-            var player = this.playerList[j];
+        for(let j = 0; j < this.players.length; j++) {
+            var player = this.players[j];
             player.resetValues();
             player.playingCurrentHand = true;
         }
@@ -122,12 +122,12 @@ class Game {
 
     get bettingRoundCompleted() {
         var completed = true;
-        if (this.playerList.length == 0) {
+        if (this.players.length == 0) {
             completed = false;
         }
 
-        for(let j = 0; j < this.playerList.length; j++) {
-            if (this.playerList[j].playedTheirTurn == false) {
+        for(let j = 0; j < this.players.length; j++) {
+            if (this.players[j].playedTheirTurn == false) {
                 completed = false;
                 break;
             }
@@ -137,8 +137,8 @@ class Game {
 
     get activePlayers() {
         var players = 0;
-        for(let j = 0; j < this.playerList.length; j++) {
-            if (this.playerList[j].playingCurrentHand) {
+        for(let j = 0; j < this.players.length; j++) {
+            if (this.players[j].playingCurrentHand) {
                 players++;
             }
         }
@@ -147,18 +147,18 @@ class Game {
 
     get smallBlindPlayer() {
         var smallBlindIndex = this.dealerPosition + 1;
-        if (smallBlindIndex >= this.playerList.length) {
-            smallBlindIndex = smallBlindIndex % this.playerList.length;
+        if (smallBlindIndex >= this.players.length) {
+            smallBlindIndex = smallBlindIndex % this.players.length;
         }
-        return this.playerList[smallBlindIndex];
+        return this.players[smallBlindIndex];
     }
 
     get bigBlindPlayer() {
         var bigBlindIndex = this.dealerPosition + 2;
-        if (bigBlindIndex >= this.playerList.length) {
-            bigBlindIndex = bigBlindIndex % this.playerList.length;
+        if (bigBlindIndex >= this.players.length) {
+            bigBlindIndex = bigBlindIndex % this.players.length;
         }
-        return this.playerList[bigBlindIndex];
+        return this.players[bigBlindIndex];
     }
     
     /**
@@ -168,8 +168,8 @@ class Game {
         logger.info("Dealing cards to players.");
         this.resetBettingRound();
         for (let i = 1; i <= 2; i++) {
-            for(let j = 0; j < this.playerList.length; j++) {
-                var player = this.playerList[j];
+            for(let j = 0; j < this.players.length; j++) {
+                var player = this.players[j];
                 var topCard = this.currentDeck.shift();
                 player.cardsInHand.push(topCard);
             }
@@ -272,8 +272,8 @@ class Game {
         this.roundUpBets();
         var winner;
         if (this.activePlayers < 2) {
-            for(let j = 0; j < this.playerList.length; j++) {
-                var player = this.playerList[j];
+            for(let j = 0; j < this.players.length; j++) {
+                var player = this.players[j];
                 if (player.playingCurrentHand) {
                     winner = player;
                     break;
@@ -281,24 +281,24 @@ class Game {
             }
         }
         else {
-            var hand1 = Hand.solve(getPlayerFullHand(this.playerList[0].cardsInHand, this.communityCards));
-            var hand2 = Hand.solve(getPlayerFullHand(this.playerList[1].cardsInHand, this.communityCards));
+            var hand1 = Hand.solve(getPlayerFullHand(this.players[0].cardsInHand, this.communityCards));
+            var hand2 = Hand.solve(getPlayerFullHand(this.players[1].cardsInHand, this.communityCards));
 
             var winnerHand = Hand.winners([hand1, hand2]);
             if (winnerHand.length == 1) {
                 if (winnerHand[0] == hand1) {
-                    logger.info("Player " + this.playerList[0].id + " won the game.");
-                    winner = this.playerList[0];
+                    logger.info("Player " + this.players[0].id + " won the game.");
+                    winner = this.players[0];
                 }
                 else {
-                    logger.info("Player " + this.playerList[1].id + " won the game.");
-                    winner = this.playerList[1];
+                    logger.info("Player " + this.players[1].id + " won the game.");
+                    winner = this.players[1];
                 }
             }
             else {
                 logger.info("Game tied. Splitting the pot.");
-                for(let j = 0; j < this.playerList.length; j++) {
-                    this.playerList[j].bank = this.playerList[j].bank + (this.potAmount / 2);
+                for(let j = 0; j < this.players.length; j++) {
+                    this.players[j].bank = this.players[j].bank + (this.potAmount / 2);
                 }
                 this.completedRounds.concluded = true;
                 return;
@@ -313,15 +313,15 @@ class Game {
      * Determine if a player can make a legal move.
      */
     playerCanPlay(player) {
-        return this.inProgress && player == this.playerList[this.playerTurn];
+        return this.inProgress && player == this.players[this.playerTurn];
     }
 
     /**
      * Reset the betting round. Should be called when someone raises.
      */
     resetBettingRound() {
-        for(let j = 0; j < this.playerList.length; j++) {
-            this.playerList[j].playedTheirTurn = false;
+        for(let j = 0; j < this.players.length; j++) {
+            this.players[j].playedTheirTurn = false;
         }
     }
 
@@ -329,8 +329,8 @@ class Game {
      * Round up all the bets. Should be called at the end of a betting round.
      */
     roundUpBets() {
-        for(let j = 0; j < this.playerList.length; j++) {
-            var player = this.playerList[j];
+        for(let j = 0; j < this.players.length; j++) {
+            var player = this.players[j];
             player.bank = player.bank - player.chipsOnTable;
             this.potAmount = this.potAmount + player.chipsOnTable;
             this.currentBet = 0;
@@ -344,16 +344,16 @@ class Game {
      */
     nextPlayerTurn() {
         this.playerTurn++;
-        if (this.playerTurn >= this.playerList.length) {
+        if (this.playerTurn >= this.players.length) {
             this.playerTurn = 0;
         }
     }
 
     addPlayerToTable(player) {
-        if (!this.playerList.includes(player) && !this.waitingList.includes(player)) {
-            if (this.playerList.length < this.playerLimit) {
-                player.name = "Player" + (this.playerList.length + 1);
-                this.playerList.push(player);
+        if (!this.players.includes(player) && !this.waitingList.includes(player)) {
+            if (this.players.length < this.playerLimit) {
+                player.name = "Player" + (this.players.length + 1);
+                this.players.push(player);
                 logger.info('Player ' + player.id + ' joined the table.');
             }
             else {
@@ -366,11 +366,11 @@ class Game {
     removePlayerFromTable(player) {
         player.name = player.id;
         player.resetValues();
-        for (let i = 0; i < this.playerList.length; i++)
+        for (let i = 0; i < this.players.length; i++)
         {
-            if (this.playerList[i] == player)
+            if (this.players[i] == player)
             {
-                this.playerList.splice(i, 1);
+                this.players.splice(i, 1);
                 break;
             }
         }
@@ -383,10 +383,10 @@ class Game {
             }
         }
 
-        while (this.playerList.length < this.playerLimit && this.waitingList.length > 0) {
+        while (this.players.length < this.playerLimit && this.waitingList.length > 0) {
             var firstPlayerInQueue = this.waitingList.shift();
-            firstPlayerInQueue.name = "Player" + (this.playerList.length + 1);
-            this.playerList.push(firstPlayerInQueue);
+            firstPlayerInQueue.name = "Player" + (this.players.length + 1);
+            this.players.push(firstPlayerInQueue);
             logger.info('Player ' + firstPlayerInQueue.id + ' moved from queue to table.');
         }
     }
@@ -446,10 +446,10 @@ module.exports = {
 
     /**
      * Start a new game instance.
-     * @param {Array} players list of players in the current game
-     * @return {Game} the new game
+     * @param {String} id unique identifier for the game instance
+     * @return {Game} the new game instance
      */
-    createNewGame: function(players) {
-        return new Game(players);
+    createNewGame: function(id) {
+        return new Game(id);
     }
 }

@@ -124,8 +124,8 @@ function sendInfoToClients() {
         var thisPlayer = socket.player;
         if (playerInsideValidGame(thisPlayer)) {
             var game = publicGameList[thisPlayer.currentGame];
-            for(let j = 0; j < game.playerList.length; j++) {
-                var thatPlayer = game.playerList[j];
+            for(let j = 0; j < game.players.length; j++) {
+                var thatPlayer = game.players[j];
                 if (thisPlayer == thatPlayer) {
                     players.push({name: thatPlayer.name, color: "", hand: thatPlayer.cardsInHand, bank: thatPlayer.bank, onTable: thatPlayer.chipsOnTable, hasCards: true});
                 }
