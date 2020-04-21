@@ -24,7 +24,26 @@
     </head>
     <body>
         <div class="vue-container">
-            <div class="table">
+            <div id="public-or-private" class="button-container">
+                <div>
+                    <button class="button" @click="displayPublicGames">Join Public Game</button>
+                </div>
+                <div>
+                    <button class="button" @click="displayPrivateGames">Create Private Game</button>
+                </div>
+            </div>
+            <div id="public-table" class="button-container" style="display:none;">
+                <div>
+                    <button class="button" @click="displayPublicOrPrivate">Back</button>
+                </div>
+                <div>
+                    <button class="button" @click="joinTable" value="1">Join Table 1</button>
+                </div>
+                <div>
+                    <button class="button" @click="joinTable" value="2">Join Table 2</button>
+                </div>
+            </div>
+            <div id="table" class="table" style="display:none;">
                 <div class="card-place">
                     <card v-for="(card, index) in five_cards" :card="card"></card>
                 </div>
@@ -72,12 +91,15 @@
                     </div>
                 </div>
             </div>
-            <div class="button-container">
-                <button class="button" @click="play">Play</button>
-                <button class="button" @click="spectate">Spectate</button>
+            <div id="player-moves" class="button-container" style="display:none;">
+                <div>
+                    <button class="button" @click="leaveTable">Leave Table</button>
+                </div>
+                <button class="button" @click="startPlaying">Play</button>
+                <button class="button" @click="startSpectating">Spectate</button>
                 <div>
                     <input v-model="amount" placeholder="Amount">
-                    <button class="button" @click="bet">Bet</button>
+                    <button class="button" @click="raise">Raise</button>
                 </div>
                 <div>
                     <button class="button" @click="call">Call</button>
@@ -109,23 +131,64 @@
                     amount: 0
                 },
                 methods: {
-                    play: function (event) {
-                        socket.emit('play');
+                    displayPublicOrPrivate: function (event) {
+                        document.getElementById('public-or-private').style.display = 'inline-block';
+                        document.getElementById('public-table').style.display = 'none';
+                        document.getElementById('table').style.display = 'none';
+                        document.getElementById('player-moves').style.display = 'none';
                     },
-                    spectate: function (event) {
-                        socket.emit('spectate');
+
+                    displayPublicGames: function (event) {
+                        document.getElementById('public-or-private').style.display = 'none';
+                        document.getElementById('public-table').style.display = 'inline-block';
+                        document.getElementById('table').style.display = 'none';
+                        document.getElementById('player-moves').style.display = 'none';
                     },
-                    bet: function (event) {
-                        socket.emit('bet', {
+
+                    displayPrivateGames: function (event) {
+                        console.log('create_private');
+                    },
+
+                    leaveTable: function (event) {
+                        document.getElementById('public-or-private').style.display = 'none';
+                        document.getElementById('public-table').style.display = 'inline-block';
+                        document.getElementById('table').style.display = 'none';
+                        document.getElementById('player-moves').style.display = 'none';
+                        socket.emit('leaveTable');
+                    },
+
+                    joinTable: function (event) {
+                        document.getElementById('public-or-private').style.display = 'none';
+                        document.getElementById('public-table').style.display = 'none';
+                        document.getElementById('table').style.display = 'inline-block';
+                        document.getElementById('player-moves').style.display = 'inline-block';
+                        socket.emit('joinTable', {
+                            table: event.srcElement.value
+                        });
+                    },
+
+                    startPlaying: function (event) {
+                        socket.emit('startPlaying');
+                    },
+
+                    startSpectating: function (event) {
+                        socket.emit('startSpectating');
+                    },
+
+                    raise: function (event) {
+                        socket.emit('raise', {
                             amount: this.amount
                         });
                     },
+
                     call: function (event) {
                         socket.emit('call');
                     },
+
                     check: function (event) {
                         socket.emit('check');
                     },
+                    
                     fold: function (event) {
                         socket.emit('fold');
                     }

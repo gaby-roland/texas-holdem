@@ -16,114 +16,176 @@ app.use(express.static(__dirname + '/client'));
 serv.listen(2000);
 logger.info("Server started.");
 
+var publicGameList = {};
+for (var i = 1; i <= 2; i++) {
+    var publicGame = pokerUtil.createNewGame("publicGame" + i);
+    publicGameList[publicGame.id] = publicGame;
+}
+
 var socketList = [];
-var playerList = [];
-var waitingList = [];
 var io = require('socket.io')(serv, {});
 io.sockets.on('connection', function(socket) {
     logger.info('Socket with ID ' + socket.id + ' connected to the server.');
+    var player = pokerUtil.createNewPlayer(socket.id);
+    socket.player = player;
     addSocketToList(socket);
 
-    var player = pokerUtil.createNewPlayer(socket.id);
-    socket.on('play', function() {
-        addPlayerToTable(player);
+    socket.on('joinTable', function(data) {
+        // TODO Validate input
+        var table = data.table;
+        if (!playerInsideValidGame(player)) {
+            player.currentGame = "publicGame" + table;
+            if (playerInsideValidGame(player)) {
+                logger.info('Player ' + player.id + ' joined table publicGame1.');
+            }
+            else {
+                logger.warn('Player ' + player.id + ' tried to join an invalid game.');
+            }
+        }
     });
 
-    socket.on('spectate', function() {
-        player.playedTheirTurn = true;
-        player.playingCurrentHand = false;
-        game.concludeGame();
-        removePlayerFromTable(player);
+    socket.on('leaveTable', function() {
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.removePlayerFromTable(player);
+        }
+        player.currentGame = null;
+        logger.info('Player ' + player.id + ' left the table.');
+    });
+
+    socket.on('startPlaying', function() {
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.addPlayerToTable(player);
+        }
+    });
+
+    socket.on('startSpectating', function() {
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.removePlayerFromTable(player);
+        }
         logger.info('Player ' + player.id + ' is spectating.');
-        checkQueue();
    });
 
-    socket.on('bet', function(data) {
+    socket.on('raise', function(data) {
+        // TODO Validate input
         var amount = parseInt(data.amount);
-        game.playerRaise(player, amount);
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.playerRaise(player, amount);
+        }
     });
 
-    socket.on('call', function(data) {
-        game.playerCall(player);
+    socket.on('call', function() {
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.playerCall(player);
+        }
     });
 
-    socket.on('check', function(data) {
-        game.playerCheck(player);
+    socket.on('check', function() {
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.playerCheck(player);
+        }
     });
 
-    socket.on('fold', function(data) {
-        game.playerFold(player);
+    socket.on('fold', function() {
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame];
+            game.playerFold(player);
+        }
     });
 
     socket.on('disconnect', function() {
-        player.playedTheirTurn = true;
-        player.playingCurrentHand = false;
-        game.concludeGame();
+        if (playerInsideValidGame(player)) {
+            var game = publicGameList[player.currentGame]
+            game.removePlayerFromTable(player);
+        }
         removeSocketFromList(socket);
-        removePlayerFromTable(player);
         logger.info("Socket with ID " + socket.id + ' disconnected from the server.');
-        checkQueue();
     });
 });
 
-// -----------------------------------------------------
-
-var playerLimit = 2;
-var game = pokerUtil.createNewGame(playerList);
 setInterval(function() {
     sendInfoToClients()
 
-    if (playerList.length >= 2) {
-        if (!game.inProgress) {
-            game.resetGame();
-            game.dealHands();
-        }
+    for (var gameId in publicGameList) {
+        var game = publicGameList[gameId];
+        var playerList = game.playerList;
 
-        if (game.bettingRoundCompleted) {
-            if (!game.completedFlop) {
-                game.dealFlop();
+        if (playerList.length >= 2) {
+            if (!game.inProgress) {
+                game.resetGame();
+                game.dealHands();
             }
-            else if (!game.completedTurn) {
-                game.dealTurn();
-            }
-            else if (!game.completedRiver) {
-                game.dealRiver();
-            }
-            else {
-                game.concludeGame();
+    
+            if (game.bettingRoundCompleted) {
+                if (!game.completedFlop) {
+                    game.dealFlop();
+                }
+                else if (!game.completedTurn) {
+                    game.dealTurn();
+                }
+                else if (!game.completedRiver) {
+                    game.dealRiver();
+                }
+                else {
+                    game.concludeGame();
+                }
             }
         }
-    }
-    else if (game.inProgress) {
-        game.concludeGame();
+        else if (game.inProgress) {
+            game.concludeGame();
+        }
     }
 }, 1000/25);
 
 function sendInfoToClients() {
     for(let i = 0; i < socketList.length; i++) {
-        var packet = [];
+        var players = [];
         var socket = socketList[i];
-        for(let j = 0; j < playerList.length; j++) {
-            var player = playerList[j];
-            if (player.id == socket.id) {
-                packet.push({name: player.name, color: "", hand: player.cardsInHand, bank: player.bank, onTable: player.chipsOnTable, hasCards: true});
+        var thisPlayer = socket.player;
+        if (playerInsideValidGame(thisPlayer)) {
+            var game = publicGameList[thisPlayer.currentGame];
+            for(let j = 0; j < game.playerList.length; j++) {
+                var thatPlayer = game.playerList[j];
+                if (thisPlayer == thatPlayer) {
+                    players.push({name: thatPlayer.name, color: "", hand: thatPlayer.cardsInHand, bank: thatPlayer.bank, onTable: thatPlayer.chipsOnTable, hasCards: true});
+                }
+                else{
+                    players.push({name: thatPlayer.name, color: "gray", bank: thatPlayer.bank, onTable: thatPlayer.chipsOnTable, hasCards: true});
+                }
             }
-            else{
-                packet.push({name: player.name, color: "gray", bank: player.bank, onTable: player.chipsOnTable, hasCards: true});
-            }
-        }
-        socket.emit('players', {
-            players: packet
-        });
-        if (game != null) {
+
+            socket.emit('players', {
+                players: players
+            });
+
             socket.emit('cards', {
                 cards: game.communityCards
             });
+
             socket.emit('player_playing', {
                 player: game.playerTurn
             });
         }
     }
+}
+
+function playerInsideValidGame(player) {
+    var inGame = false;
+    if (player.currentGame != null) {
+        var game = publicGameList[player.currentGame];
+        if (game != null) {
+            inGame = true;
+        }
+        else {
+            player.currentGame = null;
+        }
+    }
+    return inGame;
 }
 
 function addSocketToList(socket) {
@@ -141,49 +203,5 @@ function removeSocketFromList(socket) {
             socketList.splice(i, 1);
             break;
         }
-    }
-}
-
-function addPlayerToTable(player) {
-    if (!playerList.includes(player) && !waitingList.includes(player)) {
-        if (playerList.length < playerLimit) {
-            player.name = "Player" + (playerList.length + 1);
-            playerList.push(player);
-            logger.info('Player ' + player.id + ' joined the table.');
-        }
-        else {
-            waitingList.push(player);
-            logger.info('Player ' + player.id + ' added to queue.');
-        }
-    }
-}
-
-function removePlayerFromTable(player) {
-    player.name = player.id;
-    player.resetValues();
-    for (let i = 0; i < playerList.length; i++)
-    {
-        if (playerList[i] == player)
-        {
-            playerList.splice(i, 1);
-            break;
-        }
-    }
-    for (let i = 0; i < waitingList.length; i++)
-    {
-        if (waitingList[i] == player)
-        {
-            waitingList.splice(i, 1);
-            break;
-        }
-    }
-}
-
-function checkQueue() {
-    while (playerList.length < playerLimit && waitingList.length > 0) {
-        var firstPlayerInQueue = waitingList.shift();
-        firstPlayerInQueue.name = "Player" + (playerList.length + 1);
-        playerList.push(firstPlayerInQueue);
-        logger.info('Player ' + firstPlayerInQueue.id + ' moved from queue to table.');
     }
 }

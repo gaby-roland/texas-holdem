@@ -9,6 +9,7 @@ class Player {
         this.name = id;
         this.bank = 1000;
 
+        this.currentGame;
         this.chipsOnTable = 0;
         this.cardsInHand = [];
         this.playedTheirTurn = false;
@@ -24,8 +25,12 @@ class Player {
 }
 
 class Game {
-    constructor(playerList) {
-        this.playerList = playerList;
+    constructor(id) {
+        this.id = id;
+        this.name;
+        this.playerList = [];
+        this.waitingList = [];
+        this.playerLimit = 2;
         this.smallBlind = 10;
         this.bigBlind = 20;
         this.currentDeck;
@@ -90,6 +95,10 @@ class Game {
 
     get bettingRoundCompleted() {
         var completed = true;
+        if (this.playerList.length == 0) {
+            completed = false;
+        }
+
         for(let j = 0; j < this.playerList.length; j++) {
             if (this.playerList[j].playedTheirTurn == false) {
                 completed = false;
@@ -310,6 +319,48 @@ class Game {
         this.playerTurn++;
         if (this.playerTurn >= this.playerList.length) {
             this.playerTurn = 0;
+        }
+    }
+
+    addPlayerToTable(player) {
+        if (!this.playerList.includes(player) && !this.waitingList.includes(player)) {
+            if (this.playerList.length < this.playerLimit) {
+                player.name = "Player" + (this.playerList.length + 1);
+                this.playerList.push(player);
+                logger.info('Player ' + player.id + ' joined the table.');
+            }
+            else {
+                this.waitingList.push(player);
+                logger.info('Player ' + player.id + ' added to queue.');
+            }
+        }
+    }
+
+    removePlayerFromTable(player) {
+        player.name = player.id;
+        player.resetValues();
+        for (let i = 0; i < this.playerList.length; i++)
+        {
+            if (this.playerList[i] == player)
+            {
+                this.playerList.splice(i, 1);
+                break;
+            }
+        }
+        for (let i = 0; i < this.waitingList.length; i++)
+        {
+            if (this.waitingList[i] == player)
+            {
+                this.waitingList.splice(i, 1);
+                break;
+            }
+        }
+
+        while (this.playerList.length < this.playerLimit && this.waitingList.length > 0) {
+            var firstPlayerInQueue = this.waitingList.shift();
+            firstPlayerInQueue.name = "Player" + (this.playerList.length + 1);
+            this.playerList.push(firstPlayerInQueue);
+            logger.info('Player ' + firstPlayerInQueue.id + ' moved from queue to table.');
         }
     }
 }
