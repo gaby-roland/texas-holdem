@@ -42,6 +42,33 @@ class Game {
         this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
     }
 
+    updateGameState() {
+        if (this.playerList.length >= 2) {
+            if (!this.inProgress) {
+                this.resetGame();
+                this.dealHands();
+            }
+    
+            if (this.bettingRoundCompleted) {
+                if (!this.completedFlop) {
+                    this.dealFlop();
+                }
+                else if (!this.completedTurn) {
+                    this.dealTurn();
+                }
+                else if (!this.completedRiver) {
+                    this.dealRiver();
+                }
+                else {
+                    this.concludeGame();
+                }
+            }
+        }
+        else if (this.inProgress) {
+            this.concludeGame();
+        }
+    }
+
     resetGame() {
         this.currentDeck = generateNewShuffledDeck();
         this.communityCards = [];

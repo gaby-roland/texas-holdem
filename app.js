@@ -113,32 +113,7 @@ setInterval(function() {
 
     for (var gameId in publicGameList) {
         var game = publicGameList[gameId];
-        var playerList = game.playerList;
-
-        if (playerList.length >= 2) {
-            if (!game.inProgress) {
-                game.resetGame();
-                game.dealHands();
-            }
-    
-            if (game.bettingRoundCompleted) {
-                if (!game.completedFlop) {
-                    game.dealFlop();
-                }
-                else if (!game.completedTurn) {
-                    game.dealTurn();
-                }
-                else if (!game.completedRiver) {
-                    game.dealRiver();
-                }
-                else {
-                    game.concludeGame();
-                }
-            }
-        }
-        else if (game.inProgress) {
-            game.concludeGame();
-        }
+        game.updateGameState();
     }
 }, 1000/25);
 
