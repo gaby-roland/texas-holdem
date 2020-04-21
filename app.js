@@ -174,6 +174,11 @@ function sendInfoToClients() {
     }
 }
 
+/**
+* Check if a player is inside a valid game. Player can be playing or spectating.
+* @param {Player} player object representing a player
+* @return {Boolean} true if player is currently inside a valid game, false otherwise
+*/
 function playerInsideValidGame(player) {
     var inGame = false;
     if (player.currentGame != null) {
@@ -188,6 +193,10 @@ function playerInsideValidGame(player) {
     return inGame;
 }
 
+/**
+* Add a connecting socket to the list containing all sockets.
+* @param {SocketIO.Socket} socket object representing a connection
+*/
 function addSocketToList(socket) {
     if (!socketList.includes(socket))
     {
@@ -195,6 +204,10 @@ function addSocketToList(socket) {
     }
 }
 
+/**
+* Remove a disconnecting socket from the list containing all sockets.
+* @param {SocketIO.Socket} socket object representing a connection
+*/
 function removeSocketFromList(socket) {
     for (let i = 0; i < socketList.length; i++)
     {
