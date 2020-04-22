@@ -26,82 +26,82 @@ var socketList = [];
 var io = require('socket.io')(serv, {});
 io.sockets.on('connection', function(socket) {
     logger.info('Socket with ID ' + socket.id + ' connected to the server.');
-    var player = pokerUtil.createNewPlayer(socket.id);
-    socket.player = player;
+    var user = pokerUtil.createNewUser(socket.id);
+    socket.user = user;
     addSocketToList(socket);
 
     socket.on('joinTable', function(data) {
         // TODO Validate input
         var table = data.table;
-        if (!playerInsideValidGame(player)) {
-            player.currentGame = "publicGame" + table;
-            if (playerInsideValidGame(player)) {
-                logger.info('Player ' + player.id + ' joined table publicGame1.');
+        if (!userInsideValidGame(user)) {
+            user.currentGame = "publicGame" + table;
+            if (userInsideValidGame(user)) {
+                logger.info('User ' + user.id + ' joined table publicGame1.');
             }
             else {
-                logger.warn('Player ' + player.id + ' tried to join an invalid game.');
+                logger.warn('User ' + user.id + ' tried to join an invalid game.');
             }
         }
     });
 
     socket.on('leaveTable', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.removePlayerFromTable(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.removePlayerFromTable(user);
         }
-        player.currentGame = null;
-        logger.info('Player ' + player.id + ' left the table.');
+        user.currentGame = null;
+        logger.info('User ' + user.id + ' left the table.');
     });
 
     socket.on('startPlaying', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.addPlayerToTable(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.addPlayerToTable(user);
         }
     });
 
     socket.on('startSpectating', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.removePlayerFromTable(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.removePlayerFromTable(user);
         }
-        logger.info('Player ' + player.id + ' is spectating.');
+        logger.info('User ' + user.id + ' is spectating.');
    });
 
     socket.on('raise', function(data) {
         // TODO Validate input
         var amount = parseInt(data.amount);
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.playerRaise(player, amount);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.playerRaise(user, amount);
         }
     });
 
     socket.on('call', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.playerCall(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.playerCall(user);
         }
     });
 
     socket.on('check', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.playerCheck(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.playerCheck(user);
         }
     });
 
     socket.on('fold', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame];
-            game.playerFold(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
+            game.playerFold(user);
         }
     });
 
     socket.on('disconnect', function() {
-        if (playerInsideValidGame(player)) {
-            var game = publicGameList[player.currentGame]
-            game.removePlayerFromTable(player);
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame]
+            game.removePlayerFromTable(user);
         }
         removeSocketFromList(socket);
         logger.info("Socket with ID " + socket.id + ' disconnected from the server.');
@@ -121,16 +121,16 @@ function sendInfoToClients() {
     for(let i = 0; i < socketList.length; i++) {
         var players = [];
         var socket = socketList[i];
-        var thisPlayer = socket.player;
-        if (playerInsideValidGame(thisPlayer)) {
-            var game = publicGameList[thisPlayer.currentGame];
+        var user = socket.user;
+        if (userInsideValidGame(user)) {
+            var game = publicGameList[user.currentGame];
             for(let j = 0; j < game.players.length; j++) {
-                var thatPlayer = game.players[j];
-                if (thisPlayer == thatPlayer) {
-                    players.push({name: thatPlayer.name, color: "", hand: thatPlayer.cardsInHand, bank: thatPlayer.bank, onTable: thatPlayer.chipsOnTable, hasCards: true});
+                var player = game.players[j];
+                if (user == player.user) {
+                    players.push({name: player.user.name, color: "", hand: player.cardsInHand, bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
                 }
                 else{
-                    players.push({name: thatPlayer.name, color: "gray", bank: thatPlayer.bank, onTable: thatPlayer.chipsOnTable, hasCards: true});
+                    players.push({name: player.user.name, color: "gray", bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
                 }
             }
 
@@ -150,20 +150,17 @@ function sendInfoToClients() {
 }
 
 /**
-* Check if a player is inside a valid game. Player can be playing or spectating.
-* @param {Player} player object representing a player
-* @return {Boolean} true if player is currently inside a valid game, false otherwise
+* Check if a user is inside a valid game. User can be playing or spectating.
+* @param {User} user object representing a user
+* @return {Boolean} true if user is currently inside a valid game, false otherwise
 */
-function playerInsideValidGame(player) {
+function userInsideValidGame(user) {
     var inGame = false;
-    if (player.currentGame != null) {
-        var game = publicGameList[player.currentGame];
-        if (game != null) {
-            inGame = true;
-        }
-        else {
-            player.currentGame = null;
-        }
+    if (user.currentGame != null && publicGameList[user.currentGame] != null) {
+        inGame = true;
+    }
+    else {
+        user.currentGame = null;
     }
     return inGame;
 }

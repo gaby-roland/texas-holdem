@@ -3,13 +3,19 @@ const log4js = require('log4js');
 const logger = log4js.getLogger();
 logger.level = 'info';
 
-class Player {
+class User {
     constructor(id) {
         this.id = id;
         this.name = id;
-        this.bank = 1000;
-
+        this.wallet = 10000;
         this.currentGame;
+    }
+}
+
+class Player {
+    constructor(user) {
+        this.user = user;
+        this.balance = 1000;
         this.chipsOnTable = 0;
         this.cardsInHand = [];
         this.playedTheirTurn = false;
@@ -30,9 +36,12 @@ class Game {
         this.name;
         this.players = [];
         this.waitingList = [];
+        this.userToPlayer = {};
         this.playerLimit = 2;
-        this.smallBlind = 10;
-        this.bigBlind = 20;
+        this.smallBlind = 25;
+        this.bigBlind = 50;
+        this.minBuyIn = 1000;
+        this.maxBuyIn = 5000;
         this.currentDeck;
         this.dealerPosition;
         this.playerTurn;
@@ -219,48 +228,60 @@ class Game {
         this.completedRounds.river = true;
     }
 
-    playerRaise(player, amount) {
-        if (this.playerCanPlay(player)) {
-            if (this.currentBet < player.chipsOnTable + amount) {
-                this.currentBet = player.chipsOnTable + amount;
-                logger.info("Player " + player.id + ' raised to ' + this.currentBet + '.');
-                player.chipsOnTable = player.chipsOnTable + amount;
-                    
-                this.resetBettingRound();
-                player.playedTheirTurn = true;
-                this.nextPlayerTurn();
+    playerRaise(user, amount) {
+        if (user.id in this.userToPlayer) {
+            var player = this.userToPlayer[user.id];
+            if (this.playerCanPlay(player)) {
+                if (this.currentBet < player.chipsOnTable + amount) {
+                    this.currentBet = player.chipsOnTable + amount;
+                    logger.info("Player " + player.user.id + ' raised to ' + this.currentBet + '.');
+                    player.chipsOnTable = player.chipsOnTable + amount;
+                        
+                    this.resetBettingRound();
+                    player.playedTheirTurn = true;
+                    this.nextPlayerTurn();
+                }
             }
         }
     }
 
-    playerCall(player) {
-        if (this.playerCanPlay(player)) {
-            if (this.currentBet > player.chipsOnTable) {
-                logger.info("Player " + player.id + ' called.');
-                player.chipsOnTable = this.currentBet;
-                player.playedTheirTurn = true;
-                this.nextPlayerTurn();
+    playerCall(user) {
+        if (user.id in this.userToPlayer) {
+            var player = this.userToPlayer[user.id];
+            if (this.playerCanPlay(player)) {
+                if (this.currentBet > player.chipsOnTable) {
+                    logger.info("Player " + player.user.id + ' called.');
+                    player.chipsOnTable = this.currentBet;
+                    player.playedTheirTurn = true;
+                    this.nextPlayerTurn();
+                }
             }
         }
     }
 
-    playerCheck(player) {
-        if (this.playerCanPlay(player)) {
-            if (this.currentBet == player.chipsOnTable)
-            {
-                logger.info("Player " + player.id + ' checked.');
-                player.playedTheirTurn = true;
-                this.nextPlayerTurn();
+    playerCheck(user) {
+        if (user.id in this.userToPlayer) {
+            var player = this.userToPlayer[user.id];
+            if (this.playerCanPlay(player)) {
+                if (this.currentBet == player.chipsOnTable)
+                {
+                    logger.info("Player " + player.user.id + ' checked.');
+                    player.playedTheirTurn = true;
+                    this.nextPlayerTurn();
+                }
             }
         }
     }
 
-    playerFold(player) {
-        if (this.playerCanPlay(player)) {
-            logger.info("Player " + player.id + ' folded.');
-            player.playedTheirTurn = true;
-            player.playingCurrentHand = false;
-            this.concludeGame();
+    playerFold(user) {
+        if (user.id in this.userToPlayer) {
+            var player = this.userToPlayer[user.id];
+            if (this.playerCanPlay(player)) {
+                logger.info("Player " + player.user.id + ' folded.');
+                player.playedTheirTurn = true;
+                player.playingCurrentHand = false;
+                this.concludeGame();
+            }
         }
     }
 
@@ -287,25 +308,25 @@ class Game {
             var winnerHand = Hand.winners([hand1, hand2]);
             if (winnerHand.length == 1) {
                 if (winnerHand[0] == hand1) {
-                    logger.info("Player " + this.players[0].id + " won the game.");
+                    logger.info("Player " + this.players[0].user.id + " won the game.");
                     winner = this.players[0];
                 }
                 else {
-                    logger.info("Player " + this.players[1].id + " won the game.");
+                    logger.info("Player " + this.players[1].user.id + " won the game.");
                     winner = this.players[1];
                 }
             }
             else {
                 logger.info("Game tied. Splitting the pot.");
                 for(let j = 0; j < this.players.length; j++) {
-                    this.players[j].bank = this.players[j].bank + (this.potAmount / 2);
+                    this.players[j].balance = this.players[j].balance + (this.potAmount / 2);
                 }
                 this.completedRounds.concluded = true;
                 return;
             }
         }
         
-        winner.bank = winner.bank + this.potAmount;
+        winner.balance = winner.balance + this.potAmount;
         this.completedRounds.concluded = true;
     }
 
@@ -331,12 +352,12 @@ class Game {
     roundUpBets() {
         for(let j = 0; j < this.players.length; j++) {
             var player = this.players[j];
-            player.bank = player.bank - player.chipsOnTable;
+            player.balance = player.balance - player.chipsOnTable;
             this.potAmount = this.potAmount + player.chipsOnTable;
-            this.currentBet = 0;
             player.chipsOnTable = 0;
             player.playedTheirTurn = false;
         }
+        this.currentBet = 0;
     }
 
     /**
@@ -349,45 +370,52 @@ class Game {
         }
     }
 
-    addPlayerToTable(player) {
-        if (!this.players.includes(player) && !this.waitingList.includes(player)) {
+    addPlayerToTable(user) {
+        if (!(user.id in this.userToPlayer)) {
+            var player = new Player(user);
+            this.userToPlayer[user.id] = player;
             if (this.players.length < this.playerLimit) {
-                player.name = "Player" + (this.players.length + 1);
                 this.players.push(player);
-                logger.info('Player ' + player.id + ' joined the table.');
+                logger.info('Player ' + player.user.id + ' joined the table.');
             }
             else {
                 this.waitingList.push(player);
-                logger.info('Player ' + player.id + ' added to queue.');
+                logger.info('Player ' + player.user.id + ' added to queue.');
             }
+        }
+        console.log(this);
+    }
+
+    removePlayerFromTable(user) {
+        if (user.id in this.userToPlayer) {
+            var player = this.userToPlayer[user.id];
+            delete this.userToPlayer[user.id];
+            player.resetValues();
+            for (let i = 0; i < this.players.length; i++)
+            {
+                if (this.players[i] == player)
+                {
+                    this.players.splice(i, 1);
+                    break;
+                }
+            }
+            for (let i = 0; i < this.waitingList.length; i++)
+            {
+                if (this.waitingList[i] == player)
+                {
+                    this.waitingList.splice(i, 1);
+                    break;
+                }
+            }
+            this.checkQueue();
         }
     }
 
-    removePlayerFromTable(player) {
-        player.name = player.id;
-        player.resetValues();
-        for (let i = 0; i < this.players.length; i++)
-        {
-            if (this.players[i] == player)
-            {
-                this.players.splice(i, 1);
-                break;
-            }
-        }
-        for (let i = 0; i < this.waitingList.length; i++)
-        {
-            if (this.waitingList[i] == player)
-            {
-                this.waitingList.splice(i, 1);
-                break;
-            }
-        }
-
+    checkQueue() {
         while (this.players.length < this.playerLimit && this.waitingList.length > 0) {
             var firstPlayerInQueue = this.waitingList.shift();
-            firstPlayerInQueue.name = "Player" + (this.players.length + 1);
             this.players.push(firstPlayerInQueue);
-            logger.info('Player ' + firstPlayerInQueue.id + ' moved from queue to table.');
+            logger.info('Player ' + firstPlayerInQueue.user.id + ' moved from queue to table.');
         }
     }
 }
@@ -436,12 +464,12 @@ function getPlayerFullHand(playerCards, communityCards) {
 
 module.exports = {
     /**
-     * Create a new player.
-     * @param {String} id player id, should match socket id of player
-     * @return {Player} the new player
+     * Create a new user.
+     * @param {String} id user identifier, should match socket id of user
+     * @return {User} the new user
      */
-    createNewPlayer: function(id) {
-        return new Player(id);
+    createNewUser: function(id) {
+        return new User(id);
     },
 
     /**
