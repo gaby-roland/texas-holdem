@@ -124,11 +124,16 @@ class Game {
                 this.dealHands();
 
                 this.smallBlindPlayer.chipsOnTable = this.smallBlind;
+                this.smallBlindPlayer.balance -= this.smallBlind;
                 this.bigBlindPlayer.chipsOnTable = this.bigBlind;
+                this.bigBlindPlayer.balance -= this.bigBlind;
                 this.currentBet = this.bigBlind;
             }
-    
-            if (this.bettingRoundCompleted) {
+            else if (this.activePlayers < 2) {
+                this.roundUpBets()
+                this.concludeGame();
+            }
+            else if (this.bettingRoundCompleted) {
                 this.roundUpBets();
                 if (!this.completedFlop) {
                     this.dealFlop();
@@ -145,6 +150,7 @@ class Game {
             }
         }
         else if (this.inProgress) {
+            this.roundUpBets()
             this.concludeGame();
         }
     }
@@ -205,9 +211,10 @@ class Game {
             var player = this.userToPlayer[user.id];
             if (this.playerCanPlay(player)) {
                 if (this.currentBet < player.chipsOnTable + amount) {
-                    this.currentBet = player.chipsOnTable + amount;
                     logger.info("Player " + player.user.id + ' raised to ' + this.currentBet + '.');
-                    player.chipsOnTable = player.chipsOnTable + amount;
+                    this.currentBet = player.chipsOnTable + amount;
+                    player.chipsOnTable = this.currentBet;
+                    player.balance -= amount;
                         
                     this.resetBettingRound();
                     player.playedTheirTurn = true;
@@ -223,6 +230,7 @@ class Game {
             if (this.playerCanPlay(player)) {
                 if (this.currentBet > player.chipsOnTable) {
                     logger.info("Player " + player.user.id + ' called.');
+                    player.balance -= (this.currentBet - player.chipsOnTable);
                     player.chipsOnTable = this.currentBet;
                     player.playedTheirTurn = true;
                     this.nextPlayerTurn();
@@ -252,7 +260,6 @@ class Game {
                 logger.info("Player " + player.user.id + ' folded.');
                 player.playedTheirTurn = true;
                 player.playingCurrentHand = false;
-                this.concludeGame();
             }
         }
     }
@@ -263,7 +270,7 @@ class Game {
     concludeGame() {
         logger.info("Game ended.");
         var winner;
-        if (this.activePlayers < 2) {
+        if (this.activePlayers == 1) {
             for(let j = 0; j < this.players.length; j++) {
                 var player = this.players[j];
                 if (player.playingCurrentHand) {
@@ -290,14 +297,14 @@ class Game {
             else {
                 logger.info("Game tied. Splitting the pot.");
                 for(let j = 0; j < this.players.length; j++) {
-                    this.players[j].balance = this.players[j].balance + (this.potAmount / 2);
+                    this.players[j].balance += (this.potAmount / 2);
                 }
                 this.completedRounds.concluded = true;
                 return;
             }
         }
         
-        winner.balance = winner.balance + this.potAmount;
+        winner.balance += this.potAmount;
         this.completedRounds.concluded = true;
     }
 
@@ -353,8 +360,7 @@ class Game {
     roundUpBets() {
         for(let j = 0; j < this.players.length; j++) {
             var player = this.players[j];
-            player.balance = player.balance - player.chipsOnTable;
-            this.potAmount = this.potAmount + player.chipsOnTable;
+            this.potAmount += player.chipsOnTable;
             player.chipsOnTable = 0;
             player.playedTheirTurn = false;
         }
@@ -390,6 +396,9 @@ class Game {
         if (user.id in this.userToPlayer) {
             var player = this.userToPlayer[user.id];
             delete this.userToPlayer[user.id];
+            if (this.inProgress) {
+                this.potAmount += player.chipsOnTable;
+            }
             player.resetGameParameters();
             for (let i = 0; i < this.players.length; i++)
             {
