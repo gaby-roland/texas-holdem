@@ -184,6 +184,18 @@ html, body{
 	position:relative;
 	background-color:white;
 	font-family:"Houschka Rounded";
+	&.suits-Hidden{
+		background-color:rgb(179, 0, 0);
+		background:
+		linear-gradient(27deg, #151515 5px, transparent 5px) 0 5px,
+		linear-gradient(207deg, #151515 5px, transparent 5px) 10px 0px,
+		linear-gradient(27deg, #222 5px, transparent 5px) 0px 10px,
+		linear-gradient(207deg, #222 5px, transparent 5px) 10px 5px,
+		linear-gradient(90deg, #1b1b1b 10px, transparent 10px),
+		linear-gradient(#1d1d1d 25%, #1a1a1a 25%, #1a1a1a 50%, transparent 50%, transparent 75%, #242424 75%, #242424);
+		background-color: #131313;
+		background-size: 20px 20px;
+	}
 	&.suits-S, &.suits-C{
 		color:#000000;
 	}
@@ -220,6 +232,9 @@ html, body{
 	height:20px;
 	background-image:url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/441095/clovers.svg');
 	background-size:40px;
+	&.Hidden{
+		background-size:0px;
+	}
 	&.S{
 		/* Spade */
 		background-position:0 0;
