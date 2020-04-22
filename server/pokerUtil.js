@@ -22,7 +22,7 @@ class Player {
         this.playingCurrentHand = false;
     }
 
-    resetValues() {
+    resetGameParameters() {
         this.chipsOnTable = 0;
         this.cardsInHand = [];
         this.playedTheirTurn = false;
@@ -49,60 +49,6 @@ class Game {
         this.potAmount;
         this.currentBet;
         this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
-    }
-
-    updateGameState() {
-        if (this.players.length >= 2) {
-            if (!this.inProgress) {
-                this.resetGame();
-                this.dealHands();
-            }
-    
-            if (this.bettingRoundCompleted) {
-                if (!this.completedFlop) {
-                    this.dealFlop();
-                }
-                else if (!this.completedTurn) {
-                    this.dealTurn();
-                }
-                else if (!this.completedRiver) {
-                    this.dealRiver();
-                }
-                else {
-                    this.concludeGame();
-                }
-            }
-        }
-        else if (this.inProgress) {
-            this.concludeGame();
-        }
-    }
-
-    resetGame() {
-        this.currentDeck = generateNewShuffledDeck();
-        this.communityCards = [];
-        this.potAmount = 0;
-        this.currentBet = 0;
-        this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
-
-        if (this.dealerPosition == null) {
-            this.dealerPosition = 0;
-        }
-        else {
-            var nextDealer = this.dealerPosition + 1;
-            this.dealerPosition = (nextDealer >= this.players.length) ? 0 : nextDealer;
-        }
-
-        this.playerTurn = this.dealerPosition + 3;
-        if (this.playerTurn >= this.players.length) {
-            this.playerTurn = this.playerTurn % this.players.length;
-        }
-
-        for(let j = 0; j < this.players.length; j++) {
-            var player = this.players[j];
-            player.resetValues();
-            player.playingCurrentHand = true;
-        }
     }
 
     get started() {
@@ -136,7 +82,8 @@ class Game {
         }
 
         for(let j = 0; j < this.players.length; j++) {
-            if (this.players[j].playedTheirTurn == false) {
+            var player = this.players[j];
+            if (player.playingCurrentHand && player.playedTheirTurn == false) {
                 completed = false;
                 break;
             }
@@ -169,13 +116,44 @@ class Game {
         }
         return this.players[bigBlindIndex];
     }
+
+    updateGameState() {
+        if (this.players.length >= 2) {
+            if (!this.inProgress) {
+                this.resetGame();
+                this.dealHands();
+
+                this.smallBlindPlayer.chipsOnTable = this.smallBlind;
+                this.bigBlindPlayer.chipsOnTable = this.bigBlind;
+                this.currentBet = this.bigBlind;
+            }
+    
+            if (this.bettingRoundCompleted) {
+                this.roundUpBets();
+                if (!this.completedFlop) {
+                    this.dealFlop();
+                }
+                else if (!this.completedTurn) {
+                    this.dealTurn();
+                }
+                else if (!this.completedRiver) {
+                    this.dealRiver();
+                }
+                else {
+                    this.concludeGame();
+                }
+            }
+        }
+        else if (this.inProgress) {
+            this.concludeGame();
+        }
+    }
     
     /**
      * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
      */
     dealHands() {
         logger.info("Dealing cards to players.");
-        this.resetBettingRound();
         for (let i = 1; i <= 2; i++) {
             for(let j = 0; j < this.players.length; j++) {
                 var player = this.players[j];
@@ -183,9 +161,6 @@ class Game {
                 player.cardsInHand.push(topCard);
             }
         }
-        this.smallBlindPlayer.chipsOnTable = this.smallBlind;
-        this.bigBlindPlayer.chipsOnTable = this.bigBlind;
-        this.currentBet = this.bigBlind;
         logger.info("Cards have been dealt.");
         this.completedRounds.started = true;
     }
@@ -195,7 +170,6 @@ class Game {
      */
     dealFlop() {
         logger.info("Dealing the flop.");
-        this.roundUpBets();
         for (let i = 1; i <= 3; i++) {
             var topCard = this.currentDeck.shift();
             this.communityCards.push(topCard);
@@ -209,7 +183,6 @@ class Game {
      */
     dealTurn() {
         logger.info("Dealing the turn.");
-        this.roundUpBets();
         var topCard = this.currentDeck.shift();
         this.communityCards.push(topCard);
         logger.info("The turn has been dealt.");
@@ -221,7 +194,6 @@ class Game {
      */
     dealRiver() {
         logger.info("Dealing the river.");
-        this.roundUpBets();
         var topCard = this.currentDeck.shift();
         this.communityCards.push(topCard);
         logger.info("The river has been dealt.");
@@ -290,7 +262,6 @@ class Game {
      */
     concludeGame() {
         logger.info("Game ended.");
-        this.roundUpBets();
         var winner;
         if (this.activePlayers < 2) {
             for(let j = 0; j < this.players.length; j++) {
@@ -330,11 +301,41 @@ class Game {
         this.completedRounds.concluded = true;
     }
 
+    resetGame() {
+        this.currentDeck = generateNewShuffledDeck();
+        this.communityCards = [];
+        this.potAmount = 0;
+        this.currentBet = 0;
+        this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
+
+        if (this.dealerPosition == null) {
+            this.dealerPosition = 0;
+        }
+        else {
+            var nextDealer = this.dealerPosition + 1;
+            this.dealerPosition = (nextDealer >= this.players.length) ? 0 : nextDealer;
+        }
+
+        this.playerTurn = this.dealerPosition + 3;
+        if (this.playerTurn >= this.players.length) {
+            this.playerTurn = this.playerTurn % this.players.length;
+        }
+
+        for(let j = 0; j < this.players.length; j++) {
+            var player = this.players[j];
+            player.resetGameParameters();
+            player.playingCurrentHand = true;
+        }
+    }
+
     /**
      * Determine if a player can make a legal move.
      */
     playerCanPlay(player) {
-        return this.inProgress && player == this.players[this.playerTurn];
+        return this.inProgress
+        && player.playingCurrentHand == true
+        && player.playedTheirTurn == false
+        && player == this.players[this.playerTurn];
     }
 
     /**
@@ -383,14 +384,13 @@ class Game {
                 logger.info('Player ' + player.user.id + ' added to queue.');
             }
         }
-        console.log(this);
     }
 
     removePlayerFromTable(user) {
         if (user.id in this.userToPlayer) {
             var player = this.userToPlayer[user.id];
             delete this.userToPlayer[user.id];
-            player.resetValues();
+            player.resetGameParameters();
             for (let i = 0; i < this.players.length; i++)
             {
                 if (this.players[i] == player)
