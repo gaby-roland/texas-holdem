@@ -115,7 +115,7 @@ setInterval(function() {
         var game = publicGameList[gameId];
         game.updateGameState();
     }
-}, 1000/25);
+}, 1000/10);
 
 function sendInfoToClients() {
     for(let i = 0; i < socketList.length; i++) {
@@ -130,7 +130,11 @@ function sendInfoToClients() {
                     players.push({name: player.user.name, color: "", hand: player.cardsInHand, bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
                 }
                 else{
-                    players.push({name: player.user.name, color: "gray", bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
+                    var playerHand;
+                    if (player.playingCurrentHand == true) {
+                        playerHand = [{suit: "Hidden", value: null}, {suit: "Hidden", value: null}];
+                    }
+                    players.push({name: player.user.name, color: "gray", hand: playerHand, bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
                 }
             }
 
