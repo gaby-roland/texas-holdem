@@ -5,15 +5,6 @@ const log4js = require('log4js');
 const logger = log4js.getLogger();
 logger.level = 'info';
 
-class User {
-  constructor(id) {
-    this.id = id;
-    this.name = id;
-    this.wallet = 10000;
-    this.currentGame;
-  }
-}
-
 class Player {
   constructor(user) {
     this.user = user;
@@ -480,6 +471,7 @@ class Game {
 
 /**
 * Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
+* Shuffles the new deck using a cryptographically secure pseudo-random number generator.
 * @return {Array} New deck of cards containing 52 cards.
 */
 async function generateNewShuffledDeck() {
@@ -514,6 +506,13 @@ async function generateNewShuffledDeck() {
   return newDeck;
 }
 
+/**
+ * Get a player's full hand (2 cards in hand + 5 on the table).
+ * This returns the list required for the poker solver module to evaluate all the hands.
+ * @param {Array} playerCards list containing 2 player cards (value and suit)
+ * @param {Array} communityCards list containing 5 community cards (value and suit)
+ * @return {Array} list with 7 cards in the correct format for the poker solver module
+ */
 function getPlayerFullHand(playerCards, communityCards) {
   var fullHand = [];
   for (let j = 0; j < playerCards.length; j++) {
@@ -537,15 +536,6 @@ function getPlayerFullHand(playerCards, communityCards) {
 }
 
 module.exports = {
-  /**
-   * Create a new user.
-   * @param {String} id user identifier, should match socket id of user
-   * @return {User} the new user
-   */
-  createNewUser: function (id) {
-    return new User(id);
-  },
-
   /**
    * Start a new game instance.
    * @param {String} id unique identifier for the game instance

@@ -16,6 +16,15 @@ app.use(express.static(__dirname + '/client'));
 serv.listen(2000);
 logger.info("Server started.");
 
+class User {
+  constructor(id) {
+    this.id = id;
+    this.name = id;
+    this.wallet = 10000;
+    this.currentGame;
+  }
+}
+
 var publicGameList = {};
 for (var i = 1; i <= 2; i++) {
   var publicGame = pokerUtil.createNewGame("publicGame" + i);
@@ -26,7 +35,7 @@ var socketList = [];
 var io = require('socket.io')(serv, {});
 io.sockets.on('connection', function (socket) {
   logger.info('Socket with ID ' + socket.id + ' connected to the server.');
-  var user = pokerUtil.createNewUser(socket.id);
+  var user = new User(socket.id);
   socket.user = user;
   addSocketToList(socket);
 
