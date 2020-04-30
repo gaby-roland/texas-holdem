@@ -48,7 +48,7 @@ class Game {
     this.communityCards;
     this.potAmount;
     this.currentBet;
-    this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
+    this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
   }
 
   get started() {
@@ -75,13 +75,16 @@ class Game {
     return this.started && !this.concluded;
   }
 
+  /**
+   * Returns true if every player currently playing has already played their turn.
+   */
   get bettingRoundCompleted() {
     var completed = true;
     if (this.players.length == 0) {
       completed = false;
     }
 
-    for(let j = 0; j < this.players.length; j++) {
+    for (let j = 0; j < this.players.length; j++) {
       var player = this.players[j];
       if (player.playingCurrentHand && player.playedTheirTurn == false) {
         completed = false;
@@ -91,9 +94,12 @@ class Game {
     return completed;
   }
 
+  /**
+  * Returns the number of players actively playing the current hand (e.g. hasn't folded).
+  */
   get activePlayers() {
     var players = 0;
-    for(let j = 0; j < this.players.length; j++) {
+    for (let j = 0; j < this.players.length; j++) {
       if (this.players[j].playingCurrentHand) {
         players++;
       }
@@ -101,6 +107,9 @@ class Game {
     return players;
   }
 
+  /**
+  * Small blind player is usually 1 position ahead of the dealer. Wrap around if needed.
+  */
   get smallBlindPlayer() {
     var smallBlindIndex = this.dealerPosition + 1;
     if (smallBlindIndex >= this.players.length) {
@@ -109,6 +118,9 @@ class Game {
     return this.players[smallBlindIndex];
   }
 
+  /**
+  * Big blind player is usually 2 positions ahead of the dealer. Wrap around if needed.
+  */
   get bigBlindPlayer() {
     var bigBlindIndex = this.dealerPosition + 2;
     if (bigBlindIndex >= this.players.length) {
@@ -117,10 +129,14 @@ class Game {
     return this.players[bigBlindIndex];
   }
 
+  /**
+  * Should be run on a time interval. Updates the state of the game.
+  */
   updateGameState() {
     if (this.players.length >= 2) {
       if (!this.inProgress) {
         this.resetGame();
+        this.resetAllPlayers();
         this.dealHands();
 
         this.smallBlindPlayer.chipsOnTable = this.smallBlind;
@@ -135,6 +151,7 @@ class Game {
       }
       else if (this.bettingRoundCompleted) {
         this.roundUpBets();
+        this.resetBettingRound()
         if (!this.completedFlop) {
           this.dealFlop();
         }
@@ -154,14 +171,14 @@ class Game {
       this.concludeGame();
     }
   }
-  
+
   /**
    * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
    */
   dealHands() {
     logger.info("Dealing cards to players.");
     for (let i = 1; i <= 2; i++) {
-      for(let j = 0; j < this.players.length; j++) {
+      for (let j = 0; j < this.players.length; j++) {
         var player = this.players[j];
         var topCard = this.currentDeck.shift();
         player.cardsInHand.push(topCard);
@@ -206,6 +223,9 @@ class Game {
     this.completedRounds.river = true;
   }
 
+  /**
+  * Player raised the bet on the current hand.
+  */
   playerRaise(user, amount) {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
@@ -215,7 +235,7 @@ class Game {
           this.currentBet = player.chipsOnTable + amount;
           player.chipsOnTable = this.currentBet;
           player.balance -= amount;
-            
+
           this.resetBettingRound();
           player.playedTheirTurn = true;
           this.nextPlayerTurn();
@@ -224,6 +244,9 @@ class Game {
     }
   }
 
+  /**
+  * Player called the bet on the current hand.
+  */
   playerCall(user) {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
@@ -239,12 +262,14 @@ class Game {
     }
   }
 
+  /**
+  * Player checked the current hand.
+  */
   playerCheck(user) {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
-        if (this.currentBet == player.chipsOnTable)
-        {
+        if (this.currentBet == player.chipsOnTable) {
           logger.info("Player " + player.user.id + ' checked.');
           player.playedTheirTurn = true;
           this.nextPlayerTurn();
@@ -253,6 +278,9 @@ class Game {
     }
   }
 
+  /**
+  * Player folded the current hand.
+  */
   playerFold(user) {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
@@ -271,7 +299,7 @@ class Game {
     logger.info("Game ended.");
     var winner;
     if (this.activePlayers == 1) {
-      for(let j = 0; j < this.players.length; j++) {
+      for (let j = 0; j < this.players.length; j++) {
         var player = this.players[j];
         if (player.playingCurrentHand) {
           winner = player;
@@ -296,24 +324,27 @@ class Game {
       }
       else {
         logger.info("Game tied. Splitting the pot.");
-        for(let j = 0; j < this.players.length; j++) {
+        for (let j = 0; j < this.players.length; j++) {
           this.players[j].balance += (this.potAmount / 2);
         }
         this.completedRounds.concluded = true;
         return;
       }
     }
-    
+
     winner.balance += this.potAmount;
     this.completedRounds.concluded = true;
   }
 
+  /**
+  * Reset the hand. This includes resetting the pot, current bet, game state, and shuffling a new deck of cards.
+  */
   resetGame() {
     this.currentDeck = generateNewShuffledDeck();
     this.communityCards = [];
     this.potAmount = 0;
     this.currentBet = 0;
-    this.completedRounds = {started: false, flop: false, turn: false, river: false, concluded: false};
+    this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
 
     if (this.dealerPosition == null) {
       this.dealerPosition = 0;
@@ -328,7 +359,14 @@ class Game {
       this.playerTurn = this.playerTurn % this.players.length;
     }
 
-    for(let j = 0; j < this.players.length; j++) {
+    this.resetAllPlayers();
+  }
+
+  /**
+  * Reset each player's state and toggle on their playingCurrentHand variable.
+  */
+  resetAllPlayers() {
+    for (let j = 0; j < this.players.length; j++) {
       var player = this.players[j];
       player.resetGameParameters();
       player.playingCurrentHand = true;
@@ -340,16 +378,16 @@ class Game {
    */
   playerCanPlay(player) {
     return this.inProgress
-    && player.playingCurrentHand == true
-    && player.playedTheirTurn == false
-    && player == this.players[this.playerTurn];
+      && player.playingCurrentHand == true
+      && player.playedTheirTurn == false
+      && player == this.players[this.playerTurn];
   }
 
   /**
    * Reset the betting round. Should be called when someone raises.
    */
   resetBettingRound() {
-    for(let j = 0; j < this.players.length; j++) {
+    for (let j = 0; j < this.players.length; j++) {
       this.players[j].playedTheirTurn = false;
     }
   }
@@ -358,11 +396,10 @@ class Game {
    * Round up all the bets. Should be called at the end of a betting round.
    */
   roundUpBets() {
-    for(let j = 0; j < this.players.length; j++) {
+    for (let j = 0; j < this.players.length; j++) {
       var player = this.players[j];
       this.potAmount += player.chipsOnTable;
       player.chipsOnTable = 0;
-      player.playedTheirTurn = false;
     }
     this.currentBet = 0;
   }
@@ -377,6 +414,9 @@ class Game {
     }
   }
 
+  /**
+  * Add a user to the table or waiting list if maximum player capacity is reached.
+  */
   addPlayerToTable(user) {
     if (!(user.id in this.userToPlayer)) {
       var player = new Player(user);
@@ -392,6 +432,9 @@ class Game {
     }
   }
 
+  /**
+  * Remove user from the table and waiting list.
+  */
   removePlayerFromTable(user) {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
@@ -400,18 +443,14 @@ class Game {
         this.potAmount += player.chipsOnTable;
       }
       player.resetGameParameters();
-      for (let i = 0; i < this.players.length; i++)
-      {
-        if (this.players[i] == player)
-        {
+      for (let i = 0; i < this.players.length; i++) {
+        if (this.players[i] == player) {
           this.players.splice(i, 1);
           break;
         }
       }
-      for (let i = 0; i < this.waitingList.length; i++)
-      {
-        if (this.waitingList[i] == player)
-        {
+      for (let i = 0; i < this.waitingList.length; i++) {
+        if (this.waitingList[i] == player) {
           this.waitingList.splice(i, 1);
           break;
         }
@@ -420,6 +459,9 @@ class Game {
     }
   }
 
+  /**
+  * Move players from the waiting list to the table if there is an opening.
+  */
   checkQueue() {
     while (this.players.length < this.playerLimit && this.waitingList.length > 0) {
       var firstPlayerInQueue = this.waitingList.shift();
@@ -451,7 +493,7 @@ function generateNewShuffledDeck() {
 
 function getPlayerFullHand(playerCards, communityCards) {
   var fullHand = [];
-  for(let j = 0; j < playerCards.length; j++) {
+  for (let j = 0; j < playerCards.length; j++) {
     var value = playerCards[j].value;
     if (value == '10') {
       value = 'T'
@@ -460,7 +502,7 @@ function getPlayerFullHand(playerCards, communityCards) {
     fullHand.push(value + suit);
   }
 
-  for(let j = 0; j < communityCards.length; j++) {
+  for (let j = 0; j < communityCards.length; j++) {
     var value = communityCards[j].value;
     if (value == '10') {
       value = 'T'
@@ -477,7 +519,7 @@ module.exports = {
    * @param {String} id user identifier, should match socket id of user
    * @return {User} the new user
    */
-  createNewUser: function(id) {
+  createNewUser: function (id) {
     return new User(id);
   },
 
@@ -486,7 +528,7 @@ module.exports = {
    * @param {String} id unique identifier for the game instance
    * @return {Game} the new game instance
    */
-  createNewGame: function(id) {
+  createNewGame: function (id) {
     return new Game(id);
   }
 }
