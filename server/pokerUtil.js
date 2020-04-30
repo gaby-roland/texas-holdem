@@ -1,4 +1,6 @@
 const Hand = require('pokersolver').Hand;
+const randomNumber = require('random-number-csprng');
+const Promise = require('bluebird');
 const log4js = require('log4js');
 const logger = log4js.getLogger();
 logger.level = 'info';
@@ -137,38 +139,49 @@ class Game {
       if (!this.inProgress) {
         this.resetGame();
         this.resetAllPlayers();
-        this.dealHands();
 
-        this.smallBlindPlayer.chipsOnTable = this.smallBlind;
-        this.smallBlindPlayer.balance -= this.smallBlind;
-        this.bigBlindPlayer.chipsOnTable = this.bigBlind;
-        this.bigBlindPlayer.balance -= this.bigBlind;
-        this.currentBet = this.bigBlind;
+        this.completedRounds.started = true;
+        generateNewShuffledDeck().then(function (newDeck) {
+          this.currentDeck = newDeck;
+          this.dealHands();
+
+          this.smallBlindPlayer.chipsOnTable = this.smallBlind;
+          this.smallBlindPlayer.balance -= this.smallBlind;
+          this.bigBlindPlayer.chipsOnTable = this.bigBlind;
+          this.bigBlindPlayer.balance -= this.bigBlind;
+          this.currentBet = this.bigBlind;
+        }.bind(this));
       }
       else if (this.activePlayers < 2) {
         this.roundUpBets()
         this.concludeGame();
+        this.completedRounds.concluded = true;
       }
       else if (this.bettingRoundCompleted) {
         this.roundUpBets();
         this.resetBettingRound()
         if (!this.completedFlop) {
           this.dealFlop();
+          this.completedRounds.flop = true;
         }
         else if (!this.completedTurn) {
           this.dealTurn();
+          this.completedRounds.turn = true;
         }
         else if (!this.completedRiver) {
           this.dealRiver();
+          this.completedRounds.river = true;
         }
         else {
           this.concludeGame();
+          this.completedRounds.concluded = true;
         }
       }
     }
     else if (this.inProgress) {
       this.roundUpBets()
       this.concludeGame();
+      this.completedRounds.concluded = true;
     }
   }
 
@@ -185,7 +198,6 @@ class Game {
       }
     }
     logger.info("Cards have been dealt.");
-    this.completedRounds.started = true;
   }
 
   /**
@@ -198,7 +210,6 @@ class Game {
       this.communityCards.push(topCard);
     }
     logger.info("The flop (3 cards) have been dealt.");
-    this.completedRounds.flop = true;
   }
 
   /**
@@ -209,7 +220,6 @@ class Game {
     var topCard = this.currentDeck.shift();
     this.communityCards.push(topCard);
     logger.info("The turn has been dealt.");
-    this.completedRounds.turn = true;
   }
 
   /**
@@ -220,7 +230,6 @@ class Game {
     var topCard = this.currentDeck.shift();
     this.communityCards.push(topCard);
     logger.info("The river has been dealt.");
-    this.completedRounds.river = true;
   }
 
   /**
@@ -327,20 +336,18 @@ class Game {
         for (let j = 0; j < this.players.length; j++) {
           this.players[j].balance += (this.potAmount / 2);
         }
-        this.completedRounds.concluded = true;
         return;
       }
     }
 
     winner.balance += this.potAmount;
-    this.completedRounds.concluded = true;
   }
 
   /**
-  * Reset the hand. This includes resetting the pot, current bet, game state, and shuffling a new deck of cards.
+  * Reset the hand. This includes resetting the pot, current bet, game state, and emptying the deck of cards.
   */
   resetGame() {
-    this.currentDeck = generateNewShuffledDeck();
+    this.currentDeck = [];
     this.communityCards = [];
     this.potAmount = 0;
     this.currentBet = 0;
@@ -475,7 +482,7 @@ class Game {
 * Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
 * @return {Array} New deck of cards containing 52 cards.
 */
-function generateNewShuffledDeck() {
+async function generateNewShuffledDeck() {
   var suits = ['S', 'H', 'C', 'D'];
   var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
   var newDeck = [];
@@ -488,7 +495,23 @@ function generateNewShuffledDeck() {
     }
   }
 
-  return newDeck.sort(() => Math.random() - 0.5);
+  const promises = [];
+  // Asynchronously generate an array of random numbers using a CSPRNG
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    promises.push(randomNumber(0, i));
+  }
+
+  const randomNumbers = await Promise.all(promises);
+
+  // Apply durstenfeld shuffle with previously generated random numbers
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    const j = randomNumbers[newDeck.length - i - 1];
+    const temp = newDeck[i];
+    newDeck[i] = newDeck[j];
+    newDeck[j] = temp;
+  }
+
+  return newDeck;
 }
 
 function getPlayerFullHand(playerCards, communityCards) {
