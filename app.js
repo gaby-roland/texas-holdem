@@ -7,7 +7,7 @@ var express = require('express');
 var app = express();
 var serv = require('http').Server(app);
 
-app.get('/', function(req, res) {
+app.get('/', function (req, res) {
   res.sendFile(__dirname + '/client/index.html');
 });
 app.use(express.static(__dirname + '/client'));
@@ -24,13 +24,13 @@ for (var i = 1; i <= 2; i++) {
 
 var socketList = [];
 var io = require('socket.io')(serv, {});
-io.sockets.on('connection', function(socket) {
+io.sockets.on('connection', function (socket) {
   logger.info('Socket with ID ' + socket.id + ' connected to the server.');
   var user = pokerUtil.createNewUser(socket.id);
   socket.user = user;
   addSocketToList(socket);
 
-  socket.on('joinTable', function(data) {
+  socket.on('joinTable', function (data) {
     // TODO Validate input
     var table = data.table;
     if (!userInsideValidGame(user)) {
@@ -44,7 +44,7 @@ io.sockets.on('connection', function(socket) {
     }
   });
 
-  socket.on('leaveTable', function() {
+  socket.on('leaveTable', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
       game.removePlayerFromTable(user);
@@ -53,22 +53,22 @@ io.sockets.on('connection', function(socket) {
     logger.info('User ' + user.id + ' left the table.');
   });
 
-  socket.on('startPlaying', function() {
+  socket.on('startPlaying', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
       game.addPlayerToTable(user);
     }
   });
 
-  socket.on('startSpectating', function() {
+  socket.on('startSpectating', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
       game.removePlayerFromTable(user);
     }
     logger.info('User ' + user.id + ' is spectating.');
-   });
+  });
 
-  socket.on('raise', function(data) {
+  socket.on('raise', function (data) {
     // TODO Validate input
     var amount = parseInt(data.amount);
     if (userInsideValidGame(user)) {
@@ -77,28 +77,28 @@ io.sockets.on('connection', function(socket) {
     }
   });
 
-  socket.on('call', function() {
+  socket.on('call', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
       game.playerCall(user);
     }
   });
 
-  socket.on('check', function() {
+  socket.on('check', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
       game.playerCheck(user);
     }
   });
 
-  socket.on('fold', function() {
+  socket.on('fold', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
       game.playerFold(user);
     }
   });
 
-  socket.on('disconnect', function() {
+  socket.on('disconnect', function () {
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame]
       game.removePlayerFromTable(user);
@@ -108,33 +108,47 @@ io.sockets.on('connection', function(socket) {
   });
 });
 
-setInterval(function() {
+setInterval(function () {
   sendInfoToClients()
 
   for (var gameId in publicGameList) {
     var game = publicGameList[gameId];
     game.updateGameState();
   }
-}, 1000/10);
+}, 1000 / 10);
 
 function sendInfoToClients() {
-  for(let i = 0; i < socketList.length; i++) {
+  for (let i = 0; i < socketList.length; i++) {
     var players = [];
     var socket = socketList[i];
     var user = socket.user;
     if (userInsideValidGame(user)) {
       var game = publicGameList[user.currentGame];
-      for(let j = 0; j < game.players.length; j++) {
+      for (let j = 0; j < game.players.length; j++) {
         var player = game.players[j];
         if (user == player.user) {
-          players.push({name: player.user.name, color: "", hand: player.cardsInHand, bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
+          players.push({
+            name: player.user.name,
+            color: "",
+            hand: player.cardsInHand,
+            bank: player.balance,
+            onTable: player.chipsOnTable,
+            hasCards: true
+          });
         }
-        else{
+        else {
           var playerHand;
           if (player.playingCurrentHand == true) {
-            playerHand = [{suit: "Hidden", value: null}, {suit: "Hidden", value: null}];
+            playerHand = [{ suit: "Hidden", value: null }, { suit: "Hidden", value: null }];
           }
-          players.push({name: player.user.name, color: "gray", hand: playerHand, bank: player.balance, onTable: player.chipsOnTable, hasCards: true});
+          players.push({
+            name: player.user.name,
+            color: "gray",
+            hand: playerHand,
+            bank: player.balance,
+            onTable: player.chipsOnTable,
+            hasCards: true
+          });
         }
       }
 
@@ -174,8 +188,7 @@ function userInsideValidGame(user) {
 * @param {SocketIO.Socket} socket object representing a connection
 */
 function addSocketToList(socket) {
-  if (!socketList.includes(socket))
-  {
+  if (!socketList.includes(socket)) {
     socketList.push(socket);
   }
 }
@@ -185,10 +198,8 @@ function addSocketToList(socket) {
 * @param {SocketIO.Socket} socket object representing a connection
 */
 function removeSocketFromList(socket) {
-  for (let i = 0; i < socketList.length; i++)
-  {
-    if (socketList[i] == socket)
-    {
+  for (let i = 0; i < socketList.length; i++) {
+    if (socketList[i] == socket) {
       socketList.splice(i, 1);
       break;
     }
