@@ -297,41 +297,50 @@ class Game {
    */
   concludeGame() {
     logger.info("Game ended.");
-    var winner;
     if (this.activePlayers == 1) {
-      for (let j = 0; j < this.players.length; j++) {
-        var player = this.players[j];
+      for (let i = 0; i < this.players.length; i++) {
+        var player = this.players[i];
         if (player.playingCurrentHand) {
-          winner = player;
+          player.balance += this.potAmount;
           break;
         }
       }
     }
     else {
-      var hand1 = Hand.solve(getPlayerFullHand(this.players[0].cardsInHand, this.communityCards));
-      var hand2 = Hand.solve(getPlayerFullHand(this.players[1].cardsInHand, this.communityCards));
-
-      var winnerHand = Hand.winners([hand1, hand2]);
-      if (winnerHand.length == 1) {
-        if (winnerHand[0] == hand1) {
-          logger.info("Player " + this.players[0].user.id + " won the game.");
-          winner = this.players[0];
+      var competingPlayers = [];
+      var hands = [];
+      for (let i = 0; i < this.players.length; i++) {
+        var player = this.players[i];
+        if (player.playingCurrentHand) {
+          competingPlayers.push(player);
+          hands.push(Hand.solve(getPlayerFullHand(player.cardsInHand, this.communityCards)));
         }
-        else {
-          logger.info("Player " + this.players[1].user.id + " won the game.");
-          winner = this.players[1];
+      }
+
+      var winningHands = Hand.winners(hands);
+      if (winningHands.length == 1) {
+        for (let i = 0; i < hands.length; i++) {
+          if (hands[i] == winningHands[0]) {
+            logger.info("Player " + competingPlayers[i].user.id + " won the game $" + this.potAmount + ".");
+            competingPlayers[i].balance += splitPot;
+            break;
+          }
         }
       }
       else {
-        logger.info("Game tied. Splitting the pot.");
-        for (let j = 0; j < this.players.length; j++) {
-          this.players[j].balance += (this.potAmount / 2);
+        var splitPot = Math.ceil(this.potAmount / winningHands.length);
+        logger.info("Game tied. Splitting $" + this.potAmount + " with " + winningHands.length + " players.");
+        for (let i = 0; i < winningHands.length; i++) {
+          for (let j = 0; j < hands.length; j++) {
+            if (hands[j] == winningHands[i]) {
+              logger.info("Player " + competingPlayers[j].user.id + " won $" + splitPot + ".");
+              competingPlayers[j].balance += splitPot;
+              break;
+            }
+          }
         }
-        return;
       }
     }
-
-    winner.balance += this.potAmount;
   }
 
   /**
