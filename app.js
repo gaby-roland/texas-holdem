@@ -1,3 +1,4 @@
+var secureUtil = require('./server/secureUtil');
 var pokerUtil = require('./server/pokerUtil');
 var log4js = require('log4js');
 var logger = log4js.getLogger();
@@ -39,71 +40,135 @@ io.sockets.on('connection', function (socket) {
   socket.user = user;
   addSocketToList(socket);
 
-  socket.on('joinTable', function (data) {
-    // TODO Validate input
-    var table = data.table;
-    if (!userInsideValidGame(user)) {
-      user.currentGame = "publicGame" + table;
+  socket.on('joinTable', async (data) => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      // TODO Validate input
+      var table = data.table;
+      if (!userInsideValidGame(user)) {
+        user.currentGame = "publicGame" + table;
+        if (userInsideValidGame(user)) {
+          logger.info('User ' + user.id + ' joined table publicGame1.');
+        }
+        else {
+          logger.warn('User ' + user.id + ' tried to join an invalid game.');
+        }
+      }
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
+    }
+  });
+
+  socket.on('leaveTable', async () => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
       if (userInsideValidGame(user)) {
-        logger.info('User ' + user.id + ' joined table publicGame1.');
+        var game = publicGameList[user.currentGame];
+        game.removePlayerFromTable(user);
       }
-      else {
-        logger.warn('User ' + user.id + ' tried to join an invalid game.');
+      user.currentGame = null;
+      logger.info('User ' + user.id + ' left the table.');
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
+    }
+  });
+
+  socket.on('startPlaying', async () => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      if (userInsideValidGame(user)) {
+        var game = publicGameList[user.currentGame];
+        game.addPlayerToTable(user);
       }
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
     }
   });
 
-  socket.on('leaveTable', function () {
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.removePlayerFromTable(user);
-    }
-    user.currentGame = null;
-    logger.info('User ' + user.id + ' left the table.');
-  });
-
-  socket.on('startPlaying', function () {
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.addPlayerToTable(user);
-    }
-  });
-
-  socket.on('startSpectating', function () {
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.removePlayerFromTable(user);
-    }
-    logger.info('User ' + user.id + ' is spectating.');
-  });
-
-  socket.on('raise', function (data) {
-    // TODO Validate input
-    var amount = parseInt(data.amount);
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.playerRaise(user, amount);
+  socket.on('startSpectating', async () => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      if (userInsideValidGame(user)) {
+        var game = publicGameList[user.currentGame];
+        game.removePlayerFromTable(user);
+      }
+      logger.info('User ' + user.id + ' is spectating.');
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
     }
   });
 
-  socket.on('call', function () {
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.playerCall(user);
+  socket.on('raise', async (data) => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      // TODO Validate input
+      var amount = parseInt(data.amount);
+      if (userInsideValidGame(user)) {
+        var game = publicGameList[user.currentGame];
+        game.playerRaise(user, amount);
+      }
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
     }
   });
 
-  socket.on('check', function () {
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.playerCheck(user);
+  socket.on('call', async () => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      if (userInsideValidGame(user)) {
+        var game = publicGameList[user.currentGame];
+        game.playerCall(user);
+      }
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
     }
   });
 
-  socket.on('fold', function () {
-    if (userInsideValidGame(user)) {
-      var game = publicGameList[user.currentGame];
-      game.playerFold(user);
+  socket.on('check', async () => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      if (userInsideValidGame(user)) {
+        var game = publicGameList[user.currentGame];
+        game.playerCheck(user);
+      }
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
+    }
+  });
+
+  socket.on('fold', async () => {
+    try {
+      await secureUtil.rateLimiter.consume(socket.handshake.address);
+      if (userInsideValidGame(user)) {
+        var game = publicGameList[user.currentGame];
+        game.playerFold(user);
+      }
+    } catch (rejection) {
+      logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
+      socket.emit('rateLimit', {
+        wait: rejection.msBeforeNext
+      });
     }
   });
 

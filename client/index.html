@@ -219,6 +219,9 @@
         socket.on('player_playing', function (data) {
             app.player_playing = data.player;
         });
+        socket.on('rateLimit', function (data) {
+            alert("Too many requests! Try again in " + data.wait + " ms.");
+        });
     </script>
 </body>
 
