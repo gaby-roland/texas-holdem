@@ -1,209 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <link rel="stylesheet/less" type="text/css" href="css/styles.less">
-        <script src="vendor/less-js/less.min.js" type="text/javascript"></script>
-        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
-        <script src="https://unpkg.com/vue"></script>
-        <script>
-            var socket = io();
-    
-            
+
+<head>
+    <link rel="stylesheet/less" type="text/css" href="css/styles.less">
+    <script src="vendor/less-js/less.min.js" type="text/javascript"></script>
+    <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+    <script src="https://unpkg.com/vue"></script>
+    <script>
+        var socket = io();
+
+
             // // Emit message1 to client, with some data
             // var button = function() {
             //         socket.emit('button', {
             //         msg: 'someone clicked a button'
             //     });
             // }
-    
+
             // Capture message from server, with some data
             // socket.on('server', function(data) {
             //     console.log('server: ' + data.msg);
             // });
-        </script>
-    </head>
-    <body>
-        <div class="vue-container">
-            <div id="public-or-private" class="button-container">
-                <div>
-                    <button class="button" @click="displayPublicGames">Join Public Game</button>
-                </div>
-                <div>
-                    <button class="button" @click="displayPrivateGames">Create Private Game</button>
-                </div>
+    </script>
+</head>
+
+<body>
+    <div class="vue-container">
+        <div id="public-or-private" class="button-container">
+            <div>
+                <button class="button" @click="displayPublicGames">Join Public Game</button>
             </div>
-            <div id="public-table" class="button-container" style="display:none;">
-                <div>
-                    <button class="button" @click="displayPublicOrPrivate">Back</button>
-                </div>
-                <div>
-                    <button class="button" @click="joinTable" value="1">Join Table 1</button>
-                </div>
-                <div>
-                    <button class="button" @click="joinTable" value="2">Join Table 2</button>
-                </div>
+            <div>
+                <button class="button" @click="displayPrivateGames">Create Private Game</button>
             </div>
-            <div id="table" class="table" style="display:none;">
-                <div class="card-place">
-                    <card v-for="(card, index) in five_cards" :card="card"></card>
-                </div>
-                <div class="players">
-                    <div v-for="(value, index) in players"
-                          class="player" 
-                          :class="['player-' + (index + 1), {'playing': player_playing === index}]">
-                        <div class="bank">
-                            <div class="bank-value">{{ value.bank }}</div>
-                            <div class="chips v-500" v-if="value.bank / 500 >= 1"></div>
-                            <div class="chips v-100" v-if="(value.bank % 500) / 100 >= 1"></div>
-                            <div class="chips v-25" v-if="((value.bank % 500) % 100) / 25 >= 1"></div>
-                            <div class="chips v-10" v-if="(((value.bank % 500) % 100) % 25) / 10 >= 1"></div>
-                            <div class="chips v-5" v-if="((((value.bank % 500) % 100) % 25) % 10) / 5 >= 1"></div>
-                            <div class="chips v-1" v-if="(((((value.bank % 500) % 100) % 25) % 10) % 5) >= 1"></div>
+        </div>
+        <div id="public-table" class="button-container" style="display:none;">
+            <div>
+                <button class="button" @click="displayPublicOrPrivate">Back</button>
+            </div>
+            <div>
+                <button class="button" @click="joinTable" value="1">Join Table 1</button>
+            </div>
+            <div>
+                <button class="button" @click="joinTable" value="2">Join Table 2</button>
+            </div>
+        </div>
+        <div id="table" class="table" style="display:none;">
+            <div class="card-place">
+                <card v-for="(card, index) in five_cards" :card="card"></card>
+            </div>
+            <div class="players">
+                <div v-for="(value, index) in players" class="player"
+                    :class="['player-' + (index + 1), {'playing': player_playing === index}]">
+                    <div class="bank">
+                        <div class="bank-value">{{ value.bank }}</div>
+                        <div class="chips v-500" v-if="value.bank / 500 >= 1"></div>
+                        <div class="chips v-100" v-if="(value.bank % 500) / 100 >= 1"></div>
+                        <div class="chips v-25" v-if="((value.bank % 500) % 100) / 25 >= 1"></div>
+                        <div class="chips v-10" v-if="(((value.bank % 500) % 100) % 25) / 10 >= 1"></div>
+                        <div class="chips v-5" v-if="((((value.bank % 500) % 100) % 25) % 10) / 5 >= 1"></div>
+                        <div class="chips v-1" v-if="(((((value.bank % 500) % 100) % 25) % 10) % 5) >= 1"></div>
+                    </div>
+                    <div class="avatar" :style="{backgroundColor: value.color || 'dodgerblue'}"></div>
+                    <div class="name">{{value.name}}</div>
+                    <div class="bet">
+                        <div class="bet-value">
+                            {{ value.onTable }}
                         </div>
-                        <div class="avatar" :style="{backgroundColor: value.color || 'dodgerblue'}"></div>
-                        <div class="name">{{value.name}}</div>
-                        <div class="bet">
-                            <div class="bet-value">
-                                {{ value.onTable }}
-                            </div>
-                            <div class="chip-500">	
-                                <div class="chips v-500" v-for="(n, i) in ((value.onTable - (value.onTable % 500)) / 500)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(value.onTable) / 500 >= 1"></div>
-                            </div>
-                            <div class="chip-100">	
-                                <div class="chips v-100" v-for="(n, i) in (((value.onTable % 500) - ((value.onTable % 500) % 100)) / 100)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="((value.onTable) % 500) / 100 >= 1"></div>
-                            </div>
-                            <div class="chip-25">	
-                                <div class="chips v-25" v-for="(n, i) in ((((value.onTable % 500) % 100) - (((value.onTable % 500) % 100) % 25)) / 25)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((value.onTable) % 500) % 100) / 25 >= 1"></div>
-                            </div>
-                            <div class="chip-10">	
-                                <div class="chips v-10" v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) - ((((value.onTable % 500) % 100) % 25) %10)) / 10)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="((((value.onTable) % 500) % 100) % 25) / 10 >= 1"></div>
-                            </div>
-                            <div class="chip-5">
-                                <div class="chips v-5" v-for="(n, i) in ((((((value.onTable % 500) % 100) % 25) %10) - (((((value.onTable % 500) % 100) % 25) %10) % 5)) / 5)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((((value.onTable) % 500) % 100) % 25) % 10) / 5 >= 1"></div>
-                            </div>
-                            <div class="chip-1">
-                                <div class="chips v-1" v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) %10) % 5)" :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((((value.onTable % 500) % 100) % 25) %10) % 5) >= 1"></div>
+                        <div class="chip-500">
+                            <div class="chips v-500" v-for="(n, i) in ((value.onTable - (value.onTable % 500)) / 500)"
+                                :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(value.onTable) / 500 >= 1"></div>
+                        </div>
+                        <div class="chip-100">
+                            <div class="chips v-100"
+                                v-for="(n, i) in (((value.onTable % 500) - ((value.onTable % 500) % 100)) / 100)"
+                                :style="{top: (-2 + (i * 5)) + 'px'}" v-if="((value.onTable) % 500) / 100 >= 1"></div>
+                        </div>
+                        <div class="chip-25">
+                            <div class="chips v-25"
+                                v-for="(n, i) in ((((value.onTable % 500) % 100) - (((value.onTable % 500) % 100) % 25)) / 25)"
+                                :style="{top: (-2 + (i * 5)) + 'px'}" v-if="(((value.onTable) % 500) % 100) / 25 >= 1">
                             </div>
                         </div>
-                        <div class="hand">
-                            <card v-for="(card, index) in value.hand" :card="card"></card>
+                        <div class="chip-10">
+                            <div class="chips v-10"
+                                v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) - ((((value.onTable % 500) % 100) % 25) %10)) / 10)"
+                                :style="{top: (-2 + (i * 5)) + 'px'}"
+                                v-if="((((value.onTable) % 500) % 100) % 25) / 10 >= 1"></div>
                         </div>
+                        <div class="chip-5">
+                            <div class="chips v-5"
+                                v-for="(n, i) in ((((((value.onTable % 500) % 100) % 25) %10) - (((((value.onTable % 500) % 100) % 25) %10) % 5)) / 5)"
+                                :style="{top: (-2 + (i * 5)) + 'px'}"
+                                v-if="(((((value.onTable) % 500) % 100) % 25) % 10) / 5 >= 1"></div>
+                        </div>
+                        <div class="chip-1">
+                            <div class="chips v-1" v-for="(n, i) in (((((value.onTable % 500) % 100) % 25) %10) % 5)"
+                                :style="{top: (-2 + (i * 5)) + 'px'}"
+                                v-if="(((((value.onTable % 500) % 100) % 25) %10) % 5) >= 1"></div>
+                        </div>
+                    </div>
+                    <div class="hand">
+                        <card v-for="(card, index) in value.hand" :card="card"></card>
                     </div>
                 </div>
             </div>
-            <div id="player-moves" class="button-container" style="display:none;">
-                <div>
-                    <button class="button" @click="leaveTable">Leave Table</button>
-                </div>
-                <button class="button" @click="startPlaying">Play</button>
-                <button class="button" @click="startSpectating">Spectate</button>
-                <div>
-                    <input v-model="amount" placeholder="Amount">
-                    <button class="button" @click="raise">Raise</button>
-                </div>
-                <div>
-                    <button class="button" @click="call">Call</button>
-                </div>
-                <div>
-                    <button class="button" @click="check">Check</button>
-                </div>
-                <div>
-                    <button class="button" @click="fold">Fold</button>
-                </div>
+        </div>
+        <div id="player-moves" class="button-container" style="display:none;">
+            <div>
+                <button class="button" @click="leaveTable">Leave Table</button>
+            </div>
+            <button class="button" @click="startPlaying">Play</button>
+            <button class="button" @click="startSpectating">Spectate</button>
+            <div>
+                <input v-model="amount" placeholder="Amount">
+                <button class="button" @click="raise">Raise</button>
+            </div>
+            <div>
+                <button class="button" @click="call">Call</button>
+            </div>
+            <div>
+                <button class="button" @click="check">Check</button>
+            </div>
+            <div>
+                <button class="button" @click="fold">Fold</button>
             </div>
         </div>
-        <script>
-            Vue.component('card', {
-	            template: `<div class="card" :class="['suits-' + card.suit, 'values-' + card.value]">
+    </div>
+    <script>
+        Vue.component('card', {
+            template: `<div class="card" :class="['suits-' + card.suit, 'values-' + card.value]">
 		            <h1>{{card.value}}</h1>
 	            	<div class="suits" :class="card.suit"></div>
 		            <h1>{{card.value}}</h1>
 	            </div>`,
-	            props: ['card']
-            });
+            props: ['card']
+        });
 
-            let app = new Vue({
-                el: '.vue-container',
-                data: {
-                    player_playing: 0,
-                    players: [],
-                    five_cards: [],
-                    amount: 0
+        let app = new Vue({
+            el: '.vue-container',
+            data: {
+                player_playing: 0,
+                players: [],
+                five_cards: [],
+                amount: 0
+            },
+            methods: {
+                displayPublicOrPrivate: function (event) {
+                    document.getElementById('public-or-private').style.display = 'inline-block';
+                    document.getElementById('public-table').style.display = 'none';
+                    document.getElementById('table').style.display = 'none';
+                    document.getElementById('player-moves').style.display = 'none';
                 },
-                methods: {
-                    displayPublicOrPrivate: function (event) {
-                        document.getElementById('public-or-private').style.display = 'inline-block';
-                        document.getElementById('public-table').style.display = 'none';
-                        document.getElementById('table').style.display = 'none';
-                        document.getElementById('player-moves').style.display = 'none';
-                    },
 
-                    displayPublicGames: function (event) {
-                        document.getElementById('public-or-private').style.display = 'none';
-                        document.getElementById('public-table').style.display = 'inline-block';
-                        document.getElementById('table').style.display = 'none';
-                        document.getElementById('player-moves').style.display = 'none';
-                    },
+                displayPublicGames: function (event) {
+                    document.getElementById('public-or-private').style.display = 'none';
+                    document.getElementById('public-table').style.display = 'inline-block';
+                    document.getElementById('table').style.display = 'none';
+                    document.getElementById('player-moves').style.display = 'none';
+                },
 
-                    displayPrivateGames: function (event) {
-                        console.log('create_private');
-                    },
+                displayPrivateGames: function (event) {
+                    console.log('create_private');
+                },
 
-                    leaveTable: function (event) {
-                        document.getElementById('public-or-private').style.display = 'none';
-                        document.getElementById('public-table').style.display = 'inline-block';
-                        document.getElementById('table').style.display = 'none';
-                        document.getElementById('player-moves').style.display = 'none';
-                        socket.emit('leaveTable');
-                    },
+                leaveTable: function (event) {
+                    document.getElementById('public-or-private').style.display = 'none';
+                    document.getElementById('public-table').style.display = 'inline-block';
+                    document.getElementById('table').style.display = 'none';
+                    document.getElementById('player-moves').style.display = 'none';
+                    socket.emit('leaveTable');
+                },
 
-                    joinTable: function (event) {
-                        document.getElementById('public-or-private').style.display = 'none';
-                        document.getElementById('public-table').style.display = 'none';
-                        document.getElementById('table').style.display = 'inline-block';
-                        document.getElementById('player-moves').style.display = 'inline-block';
-                        socket.emit('joinTable', {
-                            table: event.srcElement.value
-                        });
-                    },
+                joinTable: function (event) {
+                    document.getElementById('public-or-private').style.display = 'none';
+                    document.getElementById('public-table').style.display = 'none';
+                    document.getElementById('table').style.display = 'inline-block';
+                    document.getElementById('player-moves').style.display = 'inline-block';
+                    socket.emit('joinTable', {
+                        table: event.srcElement.value
+                    });
+                },
 
-                    startPlaying: function (event) {
-                        socket.emit('startPlaying');
-                    },
+                startPlaying: function (event) {
+                    socket.emit('startPlaying');
+                },
 
-                    startSpectating: function (event) {
-                        socket.emit('startSpectating');
-                    },
+                startSpectating: function (event) {
+                    socket.emit('startSpectating');
+                },
 
-                    raise: function (event) {
-                        socket.emit('raise', {
-                            amount: this.amount
-                        });
-                    },
+                raise: function (event) {
+                    socket.emit('raise', {
+                        amount: this.amount
+                    });
+                },
 
-                    call: function (event) {
-                        socket.emit('call');
-                    },
+                call: function (event) {
+                    socket.emit('call');
+                },
 
-                    check: function (event) {
-                        socket.emit('check');
-                    },
-                    
-                    fold: function (event) {
-                        socket.emit('fold');
-                    }
+                check: function (event) {
+                    socket.emit('check');
+                },
+
+                fold: function (event) {
+                    socket.emit('fold');
                 }
-            });
+            }
+        });
 
-            socket.on('players', function(data) {
-                app.players = data.players;
-            });
-            socket.on('cards', function(data) {
-                app.five_cards = data.cards;
-            });
-            socket.on('player_playing', function(data) {
-                app.player_playing = data.player;
-            });
-        </script>
-    </body>
-  </html>
+        socket.on('players', function (data) {
+            app.players = data.players;
+        });
+        socket.on('cards', function (data) {
+            app.five_cards = data.cards;
+        });
+        socket.on('player_playing', function (data) {
+            app.player_playing = data.player;
+        });
+    </script>
+</body>
+
+</html>
