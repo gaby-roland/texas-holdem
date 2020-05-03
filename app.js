@@ -1,11 +1,14 @@
 var secureUtil = require('./server/secureUtil');
 var pokerUtil = require('./server/pokerUtil');
+var helmet = require('helmet');
 var log4js = require('log4js');
 var logger = log4js.getLogger();
 logger.level = 'info';
 
 var express = require('express');
 var app = express();
+app.use(helmet());
+
 var serv = require('http').Server(app);
 
 app.get('/', function (req, res) {
