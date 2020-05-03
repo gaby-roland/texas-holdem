@@ -1,3 +1,4 @@
+'use strict';
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 
 module.exports = {

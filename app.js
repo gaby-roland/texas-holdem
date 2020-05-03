@@ -1,3 +1,4 @@
+'use strict';
 var secureUtil = require('./server/secureUtil');
 var pokerUtil = require('./server/pokerUtil');
 var helmet = require('helmet');

@@ -1,3 +1,4 @@
+'use strict';
 const Hand = require('pokersolver').Hand;
 const randomNumber = require('random-number-csprng');
 const Promise = require('bluebird');
