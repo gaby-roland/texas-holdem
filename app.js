@@ -3,6 +3,7 @@ var secureUtil = require('./server/secureUtil');
 var pokerUtil = require('./server/pokerUtil');
 var helmet = require('helmet');
 var log4js = require('log4js');
+
 var logger = log4js.getLogger();
 logger.level = 'info';
 
@@ -47,15 +48,16 @@ io.sockets.on('connection', function (socket) {
   socket.on('joinTable', async (data) => {
     try {
       await secureUtil.rateLimiter.consume(socket.handshake.address);
-      // TODO Validate input
-      var table = data.table;
-      if (!userInsideValidGame(user)) {
-        user.currentGame = "publicGame" + table;
-        if (userInsideValidGame(user)) {
-          logger.info('User ' + user.id + ' joined table publicGame1.');
-        }
-        else {
-          logger.warn('User ' + user.id + ' tried to join an invalid game.');
+      if (secureUtil.validateNumberInput(data.table)) {
+        var table = data.table;
+        if (!userInsideValidGame(user)) {
+          user.currentGame = "publicGame" + table;
+          if (userInsideValidGame(user)) {
+            logger.info('User ' + user.id + ' joined table publicGame1.');
+          }
+          else {
+            logger.warn('User ' + user.id + ' tried to join an invalid game.');
+          }
         }
       }
     } catch (rejection) {
@@ -117,11 +119,12 @@ io.sockets.on('connection', function (socket) {
   socket.on('raise', async (data) => {
     try {
       await secureUtil.rateLimiter.consume(socket.handshake.address);
-      // TODO Validate input
-      var amount = parseInt(data.amount);
-      if (userInsideValidGame(user)) {
-        var game = publicGameList[user.currentGame];
-        game.playerRaise(user, amount);
+      if (secureUtil.validateNumberInput(data.amount)) {
+        var amount = parseInt(data.amount);
+        if (userInsideValidGame(user)) {
+          var game = publicGameList[user.currentGame];
+          game.playerRaise(user, amount);
+        }
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);

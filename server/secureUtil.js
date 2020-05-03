@@ -12,4 +12,12 @@ module.exports = {
       duration: 1,
     }
   ),
+
+  /**
+  * Validate that a user input is strictly a string of digits.
+  */
+  validateNumberInput: function (input) {
+    var acceptedInput = /^\d+$/;
+    return acceptedInput.test(input);
+  }
 };
