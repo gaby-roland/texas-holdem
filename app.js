@@ -146,7 +146,7 @@ function sendInfoToClients() {
           });
         }
         else {
-          var playerHand;
+          var playerHand = null;
           if (player.playingCurrentHand == true) {
             playerHand = [{ suit: "Hidden", value: null }, { suit: "Hidden", value: null }];
           }

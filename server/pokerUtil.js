@@ -321,8 +321,8 @@ class Game {
       if (winningHands.length == 1) {
         for (let i = 0; i < hands.length; i++) {
           if (hands[i] == winningHands[0]) {
-            logger.info("Player " + competingPlayers[i].user.id + " won the game $" + this.potAmount + ".");
-            competingPlayers[i].balance += splitPot;
+            logger.info("Player " + competingPlayers[i].user.id + " won the game $" + this.potAmount + " with hand: " + winningHands[0].descr);
+            competingPlayers[i].balance += this.potAmount;
             break;
           }
         }
@@ -333,7 +333,7 @@ class Game {
         for (let i = 0; i < winningHands.length; i++) {
           for (let j = 0; j < hands.length; j++) {
             if (hands[j] == winningHands[i]) {
-              logger.info("Player " + competingPlayers[j].user.id + " won $" + splitPot + ".");
+              logger.info("Player " + competingPlayers[j].user.id + " won $" + splitPot + " with hand: " + winningHands[i].descr);
               competingPlayers[j].balance += splitPot;
               break;
             }
