@@ -201,6 +201,7 @@ setInterval(function () {
 function sendInfoToClients() {
   for (let i = 0; i < socketList.length; i++) {
     var players = [];
+    var thisPlayer = null;
     var socket = socketList[i];
     var user = socket.user;
     if (userInsideValidGame(user)) {
@@ -216,6 +217,11 @@ function sendInfoToClients() {
             onTable: player.chipsOnTable,
             hasCards: true
           });
+
+          thisPlayer = {
+            name: player.user.name,
+            chipsOnTable: player.chipsOnTable
+          };
         }
         else {
           var playerHand = null;
@@ -233,16 +239,12 @@ function sendInfoToClients() {
         }
       }
 
-      socket.emit('players', {
-        players: players
-      });
-
-      socket.emit('cards', {
-        cards: game.communityCards
-      });
-
-      socket.emit('player_playing', {
-        player: game.playerTurn
+      socket.emit('gameState', {
+        players: players,
+        thisPlayer: thisPlayer,
+        communityCards: game.communityCards,
+        playerTurn: game.playerTurn,
+        currentBet: game.currentBet,
       });
     }
   }

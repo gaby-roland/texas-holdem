@@ -36,7 +36,7 @@
         </div>
         <div id="public-table" class="button-container" style="display:none;">
             <div>
-                <button class="button" @click="displayPublicOrPrivate">Back</button>
+                <button class="back-button" @click="displayPublicOrPrivate"><span>Back</span></button>
             </div>
             <div>
                 <button class="button" @click="joinTable" value="1">Join Table 1</button>
@@ -47,11 +47,11 @@
         </div>
         <div id="table" class="table" style="display:none;">
             <div class="card-place">
-                <card v-for="(card, index) in five_cards" :card="card"></card>
+                <card v-for="(card, index) in communityCards" :card="card"></card>
             </div>
             <div class="players">
                 <div v-for="(value, index) in players" class="player"
-                    :class="['player-' + (index + 1), {'playing': player_playing === index}]">
+                    :class="['player-' + (index + 1), {'playing': playerTurn === index}]">
                     <div class="bank">
                         <div class="bank-value">{{ value.bank }}</div>
                         <div class="chips v-500" v-if="value.bank / 500 >= 1"></div>
@@ -108,22 +108,28 @@
         </div>
         <div id="player-moves" class="button-container" style="display:none;">
             <div>
-                <button class="button" @click="leaveTable">Leave Table</button>
+                <button id="back-button" class="back-button" style="width: 208px;" @click="leaveTable"><span>Leave
+                        Table</span></button>
             </div>
-            <button class="button" @click="startPlaying">Play</button>
-            <button class="button" @click="startSpectating">Spectate</button>
+            <button id="play-button" class="button" style="--content: '\21D3'; --padding: 15px; width: 100px;"
+                @click="startPlaying"><span>Play</span></button>
+            <button id="spectate-button" class="button" style="--content: '\21D1'; --padding: 15px; width: 100px;"
+                @click="startSpectating"><span>Spectate</span></button>
             <div>
-                <input v-model="amount" placeholder="Amount">
-                <button class="button" @click="raise">Raise</button>
-            </div>
-            <div>
-                <button class="button" @click="call">Call</button>
-            </div>
-            <div>
-                <button class="button" @click="check">Check</button>
+                <button id="fold-button" class="button"
+                    style="--content: '\2716'; --padding: 25px; background-color: #4CAF50; width: 208px;"
+                    @click="fold"><span>Fold</span></button>
             </div>
             <div>
-                <button class="button" @click="fold">Fold</button>
+                <button id="check-button" class="button"
+                    style="--content: '\2714'; --padding: 25px; background-color: #4CAF50; width: 100px;"
+                    @click="check"><span>Check</span></button>
+                <button id="call-button" class="button" :style="callStyle" @click="call"><span>Call</span></button>
+            </div>
+            <div>
+                <input type="number" pattern="[0-9]" id="raise-amount" class="raise-amount" v-model="amount" step="25"
+                    min="25" placeholder="Amount" required>
+                <button id="raise-button" class="button" :style="raiseStyle" @click="raise"><span>Raise</span></button>
             </div>
         </div>
     </div>
@@ -140,10 +146,21 @@
         let app = new Vue({
             el: '.vue-container',
             data: {
-                player_playing: 0,
+                playerTurn: 0,
                 players: [],
-                five_cards: [],
-                amount: 0
+                communityCards: [],
+                amount: 25,
+                callAmount: 0
+            },
+            computed: {
+                callStyle() {
+                    var padding = 25 + (this.callAmount.toString().length - 1) * 7
+                    return "--content: '$" + this.callAmount + "'; --padding: " + padding + "px; background-color: #4CAF50; width: 100px;";
+                },
+                raiseStyle() {
+                    var padding = 25 + (this.amount.toString().length - 1) * 7
+                    return "--content: '$" + this.amount + "'; --padding: " + padding + "px; background-color: #4CAF50; width: 100px;";
+                }
             },
             methods: {
                 displayPublicOrPrivate: function (event) {
@@ -210,14 +227,52 @@
             }
         });
 
-        socket.on('players', function (data) {
+        socket.on('gameState', function (data) {
             app.players = data.players;
-        });
-        socket.on('cards', function (data) {
-            app.five_cards = data.cards;
-        });
-        socket.on('player_playing', function (data) {
-            app.player_playing = data.player;
+            app.communityCards = data.communityCards;
+            app.playerTurn = data.playerTurn;
+
+            if (!data.thisPlayer) {
+                document.getElementById('play-button').classList.remove('disabled');
+                document.getElementById('spectate-button').classList.add('disabled');
+                document.getElementById('raise-button').classList.add('disabled');
+                document.getElementById('raise-amount').disabled = true;
+                document.getElementById('call-button').classList.add('disabled');
+                document.getElementById('check-button').classList.add('disabled');
+                document.getElementById('fold-button').classList.add('disabled');
+            }
+            else {
+                app.callAmount = data.currentBet - data.thisPlayer.chipsOnTable;
+                document.getElementById('play-button').classList.add('disabled');
+                document.getElementById('spectate-button').classList.remove('disabled');
+
+                if (data.playerTurn != null && data.players[data.playerTurn] != null && data.players[data.playerTurn].name == data.thisPlayer.name) {
+                    document.getElementById('fold-button').classList.remove('disabled');
+                    document.getElementById('raise-amount').disabled = false;
+                    if (data.currentBet > data.thisPlayer.chipsOnTable) {
+                        document.getElementById('check-button').classList.add('disabled');
+                        document.getElementById('call-button').classList.remove('disabled');
+                    }
+                    else {
+                        document.getElementById('check-button').classList.remove('disabled');
+                        document.getElementById('call-button').classList.add('disabled');
+                    }
+
+                    if (app.amount != null && app.amount > (data.currentBet - data.thisPlayer.chipsOnTable)) {
+                        document.getElementById('raise-button').classList.remove('disabled');
+                    }
+                    else {
+                        document.getElementById('raise-button').classList.add('disabled');
+                    }
+                }
+                else {
+                    document.getElementById('raise-button').classList.add('disabled');
+                    document.getElementById('raise-amount').disabled = true;
+                    document.getElementById('call-button').classList.add('disabled');
+                    document.getElementById('check-button').classList.add('disabled');
+                    document.getElementById('fold-button').classList.add('disabled');
+                }
+            }
         });
         socket.on('rateLimit', function (data) {
             alert("Too many requests! Try again in " + data.wait + " ms.");
