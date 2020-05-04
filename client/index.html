@@ -6,22 +6,6 @@
     <script src="vendor/less-js/less.min.js" type="text/javascript"></script>
     <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
     <script src="https://unpkg.com/vue"></script>
-    <script>
-        var socket = io();
-
-
-            // // Emit message1 to client, with some data
-            // var button = function() {
-            //         socket.emit('button', {
-            //         msg: 'someone clicked a button'
-            //     });
-            // }
-
-            // Capture message from server, with some data
-            // socket.on('server', function(data) {
-            //     console.log('server: ' + data.msg);
-            // });
-    </script>
 </head>
 
 <body>
@@ -134,6 +118,8 @@
         </div>
     </div>
     <script>
+        var socket = io();
+
         Vue.component('card', {
             template: `<div class="card" :class="['suits-' + card.suit, 'values-' + card.value]">
 		            <h1>{{card.value}}</h1>
