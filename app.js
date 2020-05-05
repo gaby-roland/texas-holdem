@@ -62,8 +62,9 @@ io.sockets.on('connection', function (socket) {
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -79,8 +80,9 @@ io.sockets.on('connection', function (socket) {
       logger.info('User ' + user.id + ' left the table.');
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -89,13 +91,22 @@ io.sockets.on('connection', function (socket) {
     try {
       await secureUtil.rateLimiter.consume(socket.handshake.address);
       if (userInsideValidGame(user)) {
-        var game = publicGameList[user.currentGame];
-        game.addPlayerToTable(user);
+        if (user.wallet > 0) {
+          var game = publicGameList[user.currentGame];
+          game.addPlayerToTable(user);
+        }
+        else {
+          socket.emit('alert', {
+            header: "Insufficient funds!",
+            message: "Your balance is $0."
+          });
+        }
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -110,8 +121,9 @@ io.sockets.on('connection', function (socket) {
       logger.info('User ' + user.id + ' is spectating.');
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      soc * ket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -128,8 +140,9 @@ io.sockets.on('connection', function (socket) {
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -143,8 +156,9 @@ io.sockets.on('connection', function (socket) {
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -158,8 +172,9 @@ io.sockets.on('connection', function (socket) {
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });
@@ -173,8 +188,9 @@ io.sockets.on('connection', function (socket) {
       }
     } catch (rejection) {
       logger.warn('Rate limiter blocked user ' + user.id + '. Consumed points: ' + rejection.consumedPoints);
-      socket.emit('rateLimit', {
-        wait: rejection.msBeforeNext
+      socket.emit('alert', {
+        header: "Too many requests!",
+        message: "Try again in " + rejection.msBeforeNext + " ms."
       });
     }
   });

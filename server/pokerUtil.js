@@ -7,9 +7,9 @@ const logger = log4js.getLogger();
 logger.level = 'info';
 
 class Player {
-  constructor(user) {
+  constructor(user, balance) {
     this.user = user;
-    this.balance = 1000;
+    this.balance = balance;
     this.chipsOnTable = 0;
     this.cardsInHand = [];
     this.playedTheirTurn = false;
@@ -427,7 +427,14 @@ class Game {
   */
   addPlayerToTable(user) {
     if (!(user.id in this.userToPlayer)) {
-      var player = new Player(user);
+      var player
+      if (user.wallet > 1000) {
+        player = new Player(user, 1000);
+      }
+      else {
+        player = new Player(user, user.wallet);
+      }
+
       this.userToPlayer[user.id] = player;
       if (this.players.length < this.playerLimit) {
         this.players.push(player);

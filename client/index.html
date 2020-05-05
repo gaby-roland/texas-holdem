@@ -10,6 +10,22 @@
 
 <body>
     <div class="vue-container">
+        <!-- The Modal -->
+        <div id="alertModal" class="modal">
+            <!-- Modal content -->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="close">&times;</span>
+                    <h2>{{ alertHeader }}</h2>
+                </div>
+                <div class="modal-body">
+                    <p>{{ alertBody }}</p>
+                </div>
+                <div class="modal-footer">
+                    <h3></h3>
+                </div>
+            </div>
+        </div>
         <div id="public-or-private" class="button-container">
             <div>
                 <button class="button" @click="displayPublicGames">Join Public Game</button>

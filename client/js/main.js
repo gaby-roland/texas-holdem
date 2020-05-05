@@ -16,7 +16,9 @@ let app = new Vue({
     players: [],
     communityCards: [],
     amount: 25,
-    callAmount: 0
+    callAmount: 0,
+    alertHeader: "",
+    alertBody: ""
   },
   computed: {
     callStyle() {
@@ -140,6 +142,21 @@ socket.on('gameState', function (data) {
     }
   }
 });
-socket.on('rateLimit', function (data) {
-  alert("Too many requests! Try again in " + data.wait + " ms.");
+
+// Get the modal
+var modal = document.getElementById("alertModal");
+
+// Get the <span> element that closes the modal
+var span = document.getElementsByClassName("close")[0];
+
+// When the user clicks on <span> (x), close the modal
+span.onclick = function () {
+  modal.style.display = "none";
+}
+
+socket.on('alert', function (data) {
+  //alert("Too many requests! Try again in " + data.wait + " ms.");
+  app.alertHeader = data.header;
+  app.alertBody = data.message;
+  modal.style.display = "block";
 });
