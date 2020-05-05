@@ -14,6 +14,7 @@ class Player {
     this.cardsInHand = [];
     this.playedTheirTurn = false;
     this.playingCurrentHand = false;
+    this.allIn = false;
   }
 
   resetGameParameters() {
@@ -21,6 +22,7 @@ class Player {
     this.cardsInHand = [];
     this.playedTheirTurn = false;
     this.playingCurrentHand = false;
+    this.allIn = false;
   }
 }
 
@@ -102,6 +104,19 @@ class Game {
   }
 
   /**
+  * Returns the number of players that have gone all-in (no remaining chips in the bank).
+  */
+  get allInPlayers() {
+    var players = 0;
+    for (let j = 0; j < this.players.length; j++) {
+      if (this.players[j].allIn) {
+        players++;
+      }
+    }
+    return players;
+  }
+
+  /**
   * Small blind player is usually 1 position ahead of the dealer. Wrap around if needed.
   */
   get smallBlindPlayer() {
@@ -137,10 +152,26 @@ class Game {
           this.currentDeck = newDeck;
           this.dealHands();
 
-          this.smallBlindPlayer.chipsOnTable = this.smallBlind;
-          this.smallBlindPlayer.balance -= this.smallBlind;
-          this.bigBlindPlayer.chipsOnTable = this.bigBlind;
-          this.bigBlindPlayer.balance -= this.bigBlind;
+          if (this.smallBlindPlayer.balance <= this.smallBlind) {
+            this.smallBlindPlayer.chipsOnTable = this.smallBlindPlayer.balance;
+            this.smallBlindPlayer.balance = 0;
+            this.smallBlindPlayer.allIn = true;
+          }
+          else {
+            this.smallBlindPlayer.chipsOnTable = this.smallBlind;
+            this.smallBlindPlayer.balance -= this.smallBlind;
+          }
+
+          if (this.bigBlindPlayer.balance <= this.bigBlind) {
+            this.bigBlindPlayer.chipsOnTable = this.bigBlindPlayer.balance;
+            this.bigBlindPlayer.balance = 0;
+            this.bigBlindPlayer.allIn = true;
+          }
+          else {
+            this.bigBlindPlayer.chipsOnTable = this.bigBlind;
+            this.bigBlindPlayer.balance -= this.bigBlind;
+          }
+
           this.currentBet = this.bigBlind;
         }.bind(this));
       }
@@ -151,7 +182,10 @@ class Game {
       }
       else if (this.bettingRoundCompleted) {
         this.roundUpBets();
-        this.resetBettingRound()
+        if (this.activePlayers - this.allInPlayers > 1) {
+          this.resetBettingRound()
+        }
+
         if (!this.completedFlop) {
           this.dealFlop();
           this.completedRounds.flop = true;
@@ -181,7 +215,6 @@ class Game {
    * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
    */
   dealHands() {
-    logger.info("Dealing cards to players.");
     for (let i = 1; i <= 2; i++) {
       for (let j = 0; j < this.players.length; j++) {
         var player = this.players[j];
@@ -189,29 +222,29 @@ class Game {
         player.cardsInHand.push(topCard);
       }
     }
-    logger.info("Cards have been dealt.");
+    logger.info("Cards have been dealt to players.");
   }
 
   /**
    * Deal 3 cards (flop) on the table. Remove dealt cards from original deck.
    */
   dealFlop() {
-    logger.info("Dealing the flop.");
+    var flopStr = "";
     for (let i = 1; i <= 3; i++) {
       var topCard = this.currentDeck.shift();
       this.communityCards.push(topCard);
+      flopStr += topCard.value + topCard.suit + " ";
     }
-    logger.info("The flop (3 cards) have been dealt.");
+    logger.info("The flop (3 cards) have been dealt: " + flopStr);
   }
 
   /**
    * Deal 1 card (turn) on the table. Remove dealt card from original deck.
    */
   dealTurn() {
-    logger.info("Dealing the turn.");
     var topCard = this.currentDeck.shift();
     this.communityCards.push(topCard);
-    logger.info("The turn has been dealt.");
+    logger.info("The turn has been dealt: " + topCard.value + topCard.suit);
   }
 
   /**
@@ -221,7 +254,7 @@ class Game {
     logger.info("Dealing the river.");
     var topCard = this.currentDeck.shift();
     this.communityCards.push(topCard);
-    logger.info("The river has been dealt.");
+    logger.info("The river has been dealt: " + topCard.value + topCard.suit);
   }
 
   /**
@@ -232,7 +265,14 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet < player.chipsOnTable + amount) {
-          logger.info("Player " + player.user.id + ' raised to ' + this.currentBet + '.');
+          if (amount >= player.balance) {
+            logger.info("Player " + player.user.id + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.');
+            amount = player.balance;
+            player.allIn = true;
+          }
+          else {
+            logger.info("Player " + player.user.id + ' raised to $' + (player.chipsOnTable + amount) + '.');
+          }
           this.currentBet = player.chipsOnTable + amount;
           player.chipsOnTable = this.currentBet;
           player.balance -= amount;
@@ -253,9 +293,19 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet > player.chipsOnTable) {
-          logger.info("Player " + player.user.id + ' called.');
-          player.balance -= (this.currentBet - player.chipsOnTable);
-          player.chipsOnTable = this.currentBet;
+          var amount;
+          if ((this.currentBet - player.chipsOnTable) >= player.balance) {
+            amount = player.balance;
+            player.allIn = true;
+            logger.info("Player " + player.user.id + ' called and went all-in with $' + (player.chipsOnTable + amount) + '.');
+          }
+          else {
+            amount = (this.currentBet - player.chipsOnTable);
+            logger.info("Player " + player.user.id + ' called $' + (player.chipsOnTable + amount) + '.');
+          }
+
+          player.balance -= amount;
+          player.chipsOnTable += amount;
           player.playedTheirTurn = true;
           this.nextPlayerTurn();
         }
@@ -287,6 +337,7 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         logger.info("Player " + player.user.id + ' folded.');
+        player.cardsInHand = [];
         player.playedTheirTurn = true;
         player.playingCurrentHand = false;
       }
@@ -302,6 +353,7 @@ class Game {
       for (let i = 0; i < this.players.length; i++) {
         var player = this.players[i];
         if (player.playingCurrentHand) {
+          logger.info("Player " + player.user.id + ' won $' + this.potAmount);
           player.balance += this.potAmount;
           break;
         }
@@ -322,7 +374,7 @@ class Game {
       if (winningHands.length == 1) {
         for (let i = 0; i < hands.length; i++) {
           if (hands[i] == winningHands[0]) {
-            logger.info("Player " + competingPlayers[i].user.id + " won the game $" + this.potAmount + " with hand: " + winningHands[0].descr);
+            logger.info("Player " + competingPlayers[i].user.id + " won $" + this.potAmount + " with hand: " + winningHands[0].descr);
             competingPlayers[i].balance += this.potAmount;
             break;
           }
@@ -339,6 +391,13 @@ class Game {
               break;
             }
           }
+        }
+      }
+      for (let i = 0; i < this.players.length; i++) {
+        var player = this.players[i];
+        if (player.balance == 0) {
+          logger.info("Player " + player.user.id + " is spectating.");
+          this.removePlayerFromTable(player.user);
         }
       }
     }
