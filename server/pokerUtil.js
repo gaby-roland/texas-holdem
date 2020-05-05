@@ -265,7 +265,17 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet < player.chipsOnTable + amount) {
-          if (amount >= player.balance) {
+          var maxBet = player.balance + player.chipsOnTable;
+          for (let i = 0; i < this.players.length; i++) {
+            if (this.players[i].balance + this.players[i].chipsOnTable < maxBet) {
+              maxBet = this.players[i].balance + this.players[i].chipsOnTable;
+            }
+          }
+          if (amount > maxBet - player.chipsOnTable) {
+            amount = maxBet - player.chipsOnTable;
+          }
+
+          if (amount == player.balance) {
             logger.info("Player " + player.user.id + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.');
             amount = player.balance;
             player.allIn = true;
