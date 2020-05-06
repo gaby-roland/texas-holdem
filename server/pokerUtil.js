@@ -44,6 +44,7 @@ class Game {
     this.communityCards;
     this.potAmount;
     this.currentBet;
+    this.logForUsers = "";
     this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
   }
 
@@ -276,12 +277,14 @@ class Game {
           }
 
           if (amount == player.balance) {
-            logger.info("Player " + player.user.id + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.');
+            logger.info("Player " + player.user.name + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.');
+            this.logForUsers += 'Player ' + player.user.name + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.\n';
             amount = player.balance;
             player.allIn = true;
           }
           else {
-            logger.info("Player " + player.user.id + ' raised to $' + (player.chipsOnTable + amount) + '.');
+            logger.info("Player " + player.user.name + ' raised to $' + (player.chipsOnTable + amount) + '.');
+            this.logForUsers += "Player " + player.user.name + ' raised to $' + (player.chipsOnTable + amount) + '.\n';
           }
           this.currentBet = player.chipsOnTable + amount;
           player.chipsOnTable = this.currentBet;
@@ -307,11 +310,14 @@ class Game {
           if ((this.currentBet - player.chipsOnTable) >= player.balance) {
             amount = player.balance;
             player.allIn = true;
-            logger.info("Player " + player.user.id + ' called and went all-in with $' + (player.chipsOnTable + amount) + '.');
+            logger.info("Player " + player.user.name + ' called and went all-in with $' + (player.chipsOnTable + amount) + '.');
+            this.logForUsers += "Player " + player.user.name + ' called (all-in) with $' + (player.chipsOnTable + amount) + '.\n';
+
           }
           else {
             amount = (this.currentBet - player.chipsOnTable);
-            logger.info("Player " + player.user.id + ' called $' + (player.chipsOnTable + amount) + '.');
+            logger.info("Player " + player.user.name + ' called $' + (player.chipsOnTable + amount) + '.');
+            this.logForUsers += "Player " + player.user.name + ' called $' + (player.chipsOnTable + amount) + '.\n';
           }
 
           player.balance -= amount;
@@ -331,7 +337,8 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet == player.chipsOnTable) {
-          logger.info("Player " + player.user.id + ' checked.');
+          logger.info("Player " + player.user.name + ' checked.');
+          this.logForUsers += "Player " + player.user.name + ' checked.\n';
           player.playedTheirTurn = true;
           this.nextPlayerTurn();
         }
@@ -346,7 +353,8 @@ class Game {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
-        logger.info("Player " + player.user.id + ' folded.');
+        logger.info("Player " + player.user.name + ' folded.');
+        this.logForUsers += "Player " + player.user.name + ' folded.\n';
         player.cardsInHand = [];
         player.playedTheirTurn = true;
         player.playingCurrentHand = false;
@@ -363,7 +371,8 @@ class Game {
       for (let i = 0; i < this.players.length; i++) {
         var player = this.players[i];
         if (player.playingCurrentHand) {
-          logger.info("Player " + player.user.id + ' won $' + this.potAmount);
+          logger.info("Player " + player.user.name + ' won $' + this.potAmount);
+          this.logForUsers += "Player " + player.user.name + ' won $' + this.potAmount + '.\n';
           player.balance += this.potAmount;
           break;
         }
@@ -384,7 +393,8 @@ class Game {
       if (winningHands.length == 1) {
         for (let i = 0; i < hands.length; i++) {
           if (hands[i] == winningHands[0]) {
-            logger.info("Player " + competingPlayers[i].user.id + " won $" + this.potAmount + " with hand: " + winningHands[0].descr);
+            logger.info("Player " + competingPlayers[i].user.name + " won $" + this.potAmount + " with: " + winningHands[0].descr);
+            this.logForUsers += "Player " + competingPlayers[i].user.name + ' won $' + this.potAmount + " with: " + winningHands[0].descr + '.\n';
             competingPlayers[i].balance += this.potAmount;
             break;
           }
@@ -396,7 +406,8 @@ class Game {
         for (let i = 0; i < winningHands.length; i++) {
           for (let j = 0; j < hands.length; j++) {
             if (hands[j] == winningHands[i]) {
-              logger.info("Player " + competingPlayers[j].user.id + " won $" + splitPot + " with hand: " + winningHands[i].descr);
+              logger.info("Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr);
+              this.logForUsers += "Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr + '.\n';
               competingPlayers[j].balance += splitPot;
               break;
             }
@@ -406,7 +417,6 @@ class Game {
       for (let i = 0; i < this.players.length; i++) {
         var player = this.players[i];
         if (player.balance == 0) {
-          logger.info("Player " + player.user.id + " is spectating.");
           this.removePlayerFromTable(player.user);
         }
       }
@@ -507,11 +517,13 @@ class Game {
       this.userToPlayer[user.id] = player;
       if (this.players.length < this.playerLimit) {
         this.players.push(player);
-        logger.info('Player ' + player.user.id + ' joined the table.');
+        logger.info('Player ' + player.user.name + ' joined the table.');
+        this.logForUsers += 'Player ' + player.user.name + ' joined the table.\n';
       }
       else {
         this.waitingList.push(player);
-        logger.info('Player ' + player.user.id + ' added to queue.');
+        logger.info('Player ' + player.user.name + ' added to queue.');
+        this.logForUsers += 'Player ' + player.user.name + ' is waiting to join.\n';
       }
     }
   }
@@ -539,6 +551,8 @@ class Game {
           break;
         }
       }
+      logger.info('Player ' + player.user.name + ' left the table.');
+      this.logForUsers += 'Player ' + player.user.name + ' left the table.\n';
       this.checkQueue();
     }
   }
@@ -550,7 +564,8 @@ class Game {
     while (this.players.length < this.playerLimit && this.waitingList.length > 0) {
       var firstPlayerInQueue = this.waitingList.shift();
       this.players.push(firstPlayerInQueue);
-      logger.info('Player ' + firstPlayerInQueue.user.id + ' moved from queue to table.');
+      logger.info('Player ' + firstPlayerInQueue.user.name + ' moved from queue to table.');
+      this.logForUsers += 'Player ' + firstPlayerInQueue.user.name + ' joined the table.\n';
     }
   }
 }

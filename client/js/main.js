@@ -100,6 +100,12 @@ socket.on('gameState', function (data) {
   app.communityCards = data.communityCards;
   app.playerTurn = data.playerTurn;
 
+  if (data.log != null && data.log != "") {
+    var logBox = document.getElementById("log-box");
+    logBox.value += data.log;
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
   if (!data.thisPlayer) {
     document.getElementById('play-button').classList.remove('disabled');
     document.getElementById('spectate-button').classList.add('disabled');
