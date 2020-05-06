@@ -79,6 +79,7 @@ let app = new Vue({
       socket.emit('raise', {
         amount: this.amount
       });
+      this.amount = document.getElementById("raise-amount").min;
     },
 
     call: function (event) {
