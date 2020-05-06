@@ -157,20 +157,24 @@ class Game {
             this.smallBlindPlayer.chipsOnTable = this.smallBlindPlayer.balance;
             this.smallBlindPlayer.balance = 0;
             this.smallBlindPlayer.allIn = true;
+            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlindPlayer.chipsOnTable + ' small blind.\n';
           }
           else {
             this.smallBlindPlayer.chipsOnTable = this.smallBlind;
             this.smallBlindPlayer.balance -= this.smallBlind;
+            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlind + ' small blind.\n';
           }
 
           if (this.bigBlindPlayer.balance <= this.bigBlind) {
             this.bigBlindPlayer.chipsOnTable = this.bigBlindPlayer.balance;
             this.bigBlindPlayer.balance = 0;
             this.bigBlindPlayer.allIn = true;
+            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlindPlayer.chipsOnTable + ' big blind.\n';
           }
           else {
             this.bigBlindPlayer.chipsOnTable = this.bigBlind;
             this.bigBlindPlayer.balance -= this.bigBlind;
+            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlind + ' big blind.\n';
           }
 
           this.currentBet = this.bigBlind;
