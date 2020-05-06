@@ -425,6 +425,8 @@ class Game {
         }
       }
     }
+    this.communityCards = [];
+    this.resetAllPlayers();
   }
 
   /**

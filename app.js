@@ -240,7 +240,7 @@ function sendInfoToClients() {
         }
         else {
           var playerHand = null;
-          if (player.playingCurrentHand == true) {
+          if (player.cardsInHand.length == 2) {
             playerHand = [{ suit: "Hidden", value: null }, { suit: "Hidden", value: null }];
           }
           players.push({
