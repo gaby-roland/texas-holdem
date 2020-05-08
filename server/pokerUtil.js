@@ -30,6 +30,7 @@ class Game {
   constructor(id) {
     this.id = id;
     this.name;
+    this.sockets = [];
     this.players = [];
     this.waitingList = [];
     this.userToPlayer = {};
@@ -45,6 +46,7 @@ class Game {
     this.potAmount;
     this.currentBet;
     this.logForUsers = "";
+    this.timerId;
     this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
   }
 
@@ -137,83 +139,6 @@ class Game {
       bigBlindIndex = bigBlindIndex % this.players.length;
     }
     return this.players[bigBlindIndex];
-  }
-
-  /**
-  * Should be run on a time interval. Updates the state of the game.
-  */
-  updateGameState() {
-    if (this.players.length >= 2) {
-      if (!this.inProgress) {
-        this.resetGame();
-        this.resetAllPlayers();
-
-        this.completedRounds.started = true;
-        generateNewShuffledDeck().then(function (newDeck) {
-          this.currentDeck = newDeck;
-          this.dealHands();
-
-          if (this.smallBlindPlayer.balance <= this.smallBlind) {
-            this.smallBlindPlayer.chipsOnTable = this.smallBlindPlayer.balance;
-            this.smallBlindPlayer.balance = 0;
-            this.smallBlindPlayer.allIn = true;
-            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlindPlayer.chipsOnTable + ' small blind.\n';
-          }
-          else {
-            this.smallBlindPlayer.chipsOnTable = this.smallBlind;
-            this.smallBlindPlayer.balance -= this.smallBlind;
-            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlind + ' small blind.\n';
-          }
-
-          if (this.bigBlindPlayer.balance <= this.bigBlind) {
-            this.bigBlindPlayer.chipsOnTable = this.bigBlindPlayer.balance;
-            this.bigBlindPlayer.balance = 0;
-            this.bigBlindPlayer.allIn = true;
-            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlindPlayer.chipsOnTable + ' big blind.\n';
-          }
-          else {
-            this.bigBlindPlayer.chipsOnTable = this.bigBlind;
-            this.bigBlindPlayer.balance -= this.bigBlind;
-            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlind + ' big blind.\n';
-          }
-
-          this.currentBet = this.bigBlind;
-        }.bind(this));
-      }
-      else if (this.activePlayers < 2) {
-        this.roundUpBets()
-        this.concludeGame();
-        this.completedRounds.concluded = true;
-      }
-      else if (this.bettingRoundCompleted) {
-        this.roundUpBets();
-        if (this.activePlayers - this.allInPlayers > 1) {
-          this.resetBettingRound()
-        }
-
-        if (!this.completedFlop) {
-          this.dealFlop();
-          this.completedRounds.flop = true;
-        }
-        else if (!this.completedTurn) {
-          this.dealTurn();
-          this.completedRounds.turn = true;
-        }
-        else if (!this.completedRiver) {
-          this.dealRiver();
-          this.completedRounds.river = true;
-        }
-        else {
-          this.concludeGame();
-          this.completedRounds.concluded = true;
-        }
-      }
-    }
-    else if (this.inProgress) {
-      this.roundUpBets()
-      this.concludeGame();
-      this.completedRounds.concluded = true;
-    }
   }
 
   /**
@@ -574,43 +499,29 @@ class Game {
       this.logForUsers += 'Player ' + firstPlayerInQueue.user.name + ' joined the table.\n';
     }
   }
-}
 
-/**
-* Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
-* Shuffles the new deck using a cryptographically secure pseudo-random number generator.
-* @return {Array} New deck of cards containing 52 cards.
-*/
-async function generateNewShuffledDeck() {
-  var suits = ['S', 'H', 'C', 'D'];
-  var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-  var newDeck = [];
-  for (let suit of suits) {
-    for (let value of values) {
-      newDeck.push({
-        suit: suit,
-        value: value
-      })
+  /**
+  * Add a connection socket to the game.
+  * @param {SocketIO.Socket} socket object representing a connection
+  */
+  addSocketToGame(socket) {
+    if (!this.sockets.includes(socket)) {
+      this.sockets.push(socket);
     }
   }
 
-  const promises = [];
-  // Asynchronously generate an array of random numbers using a CSPRNG
-  for (let i = newDeck.length - 1; i > 0; i--) {
-    promises.push(randomNumber(0, i));
+  /**
+  * Remove a connection socket from the game.
+  * @param {SocketIO.Socket} socket object representing a connection
+  */
+  removeSocketFromGame(socket) {
+    for (let i = 0; i < this.sockets.length; i++) {
+      if (this.sockets[i] == socket) {
+        this.sockets.splice(i, 1);
+        break;
+      }
+    }
   }
-
-  const randomNumbers = await Promise.all(promises);
-
-  // Apply durstenfeld shuffle with previously generated random numbers
-  for (let i = newDeck.length - 1; i > 0; i--) {
-    const j = randomNumbers[newDeck.length - i - 1];
-    const temp = newDeck[i];
-    newDeck[i] = newDeck[j];
-    newDeck[j] = temp;
-  }
-
-  return newDeck;
 }
 
 /**
@@ -650,5 +561,42 @@ module.exports = {
    */
   createNewGame: function (id) {
     return new Game(id);
+  },
+
+  /**
+  * Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
+  * Shuffles the new deck using a cryptographically secure pseudo-random number generator.
+  * @return {Array} New deck of cards containing 52 cards.
+  */
+  generateNewShuffledDeck: async function () {
+    var suits = ['S', 'H', 'C', 'D'];
+    var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    var newDeck = [];
+    for (let suit of suits) {
+      for (let value of values) {
+        newDeck.push({
+          suit: suit,
+          value: value
+        })
+      }
+    }
+
+    const promises = [];
+    // Asynchronously generate an array of random numbers using a CSPRNG
+    for (let i = newDeck.length - 1; i > 0; i--) {
+      promises.push(randomNumber(0, i));
+    }
+
+    const randomNumbers = await Promise.all(promises);
+
+    // Apply durstenfeld shuffle with previously generated random numbers
+    for (let i = newDeck.length - 1; i > 0; i--) {
+      const j = randomNumbers[newDeck.length - i - 1];
+      const temp = newDeck[i];
+      newDeck[i] = newDeck[j];
+      newDeck[j] = temp;
+    }
+
+    return newDeck;
   }
 }
