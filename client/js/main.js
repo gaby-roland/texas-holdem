@@ -150,6 +150,10 @@ socket.on('gameState', function (data) {
   }
 });
 
+function updateRaiseButtonState() {
+
+}
+
 // Get the modal
 var modal = document.getElementById("alertModal");
 

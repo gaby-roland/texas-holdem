@@ -1,26 +1,161 @@
 'use strict';
-var secureUtil = require('./server/secureUtil');
-var pokerUtil = require('./server/pokerUtil');
-var helmet = require('helmet');
-var log4js = require('log4js');
+const express = require('express');
+const session = require('express-session');
+const helmet = require('helmet');
+const log4js = require('log4js');
+const secureUtil = require('./server/secureUtil');
+const pool = require('./server/database');
+const argon2 = require('argon2');
 
-var logger = log4js.getLogger();
+const logger = log4js.getLogger();
 logger.level = 'info';
 
-var express = require('express');
-var app = express();
+const {
+  APPLICATION_PORT = 2000,
+  NODE_ENV = 'development',
+  SESSION_NAME = 'sid',
+  SESSION_SECRET = 'FU11H0U53',
+  SESSION_IDLE_TIMEOUT = 1000 * 60 * 60 * 2, // Two hours
+} = process.env;
+
+const IN_PRODUCTION = NODE_ENV === 'production';
+
+const app = express();
+app.use(session({
+  name: SESSION_NAME,
+  resave: false,
+  saveUninitialized: false,
+  secret: SESSION_SECRET,
+  rolling: true, // If session active, reroll cookie timeout
+  cookie: {
+    maxAge: SESSION_IDLE_TIMEOUT,
+    sameSite: true,
+    secure: IN_PRODUCTION
+  }
+}));
+
 app.use(helmet());
-
-var serv = require('http').Server(app);
-
-app.get('/', function (req, res) {
-  res.sendFile(__dirname + '/client/index.html');
-});
 app.use(express.static(__dirname + '/client'));
+app.use(express.urlencoded({ extended: true }));
 
-// Listen to port 2000
-serv.listen(2000);
-logger.info("Server started.");
+const server = require('http').Server(app);
+const io = require('socket.io')(server);
+
+const redirectLogin = (req, res, next) => {
+  if (!req.session || !req.session.userId) {
+    res.redirect('/register-login');
+  }
+  else {
+    next();
+  }
+};
+
+const redirectPoker = (req, res, next) => {
+  if (req.session && req.session.userId) {
+    res.redirect('/poker');
+  }
+  else {
+    next();
+  }
+};
+
+app.get('/', (req, res) => {
+  const { session } = req.session;
+  if (session) {
+    res.redirect('/poker');
+  }
+  else {
+    res.redirect('/register-login');
+  }
+});
+
+app.get('/register-login', redirectPoker, (req, res) => {
+  res.sendFile(__dirname + '/client/login.html');
+});
+
+app.post('/login', redirectPoker, (req, res) => {
+  const { username, password } = req.body;
+  pool.query('SELECT * FROM users WHERE username = ?', [username],
+    async function (error, results) {
+      if (error) {
+        logger.warn("Error while querying the database to log in: " + error);
+        res.redirect('/register-login?errorType=loginError&errorCode=UnknownError');
+      }
+      if (results.length != 0) {
+        try {
+          if (await argon2.verify(results[0].password, password)) {
+            req.session.userId = results[0].id;
+            return res.redirect('/poker');
+          }
+          else {
+            res.redirect('/register-login?errorType=loginError&errorCode=InvalidLogin');
+          }
+        }
+        catch (error) {
+          logger.error("Error while verifying password using argon2:");
+          throw error;
+        }
+      }
+      else {
+        res.redirect('/register-login?errorType=loginError&errorCode=InvalidLogin');
+      }
+    });
+});
+
+app.post('/register', redirectPoker, (req, res) => {
+  const { username, email, password, confirmPassword } = req.body;
+
+  try {
+    secureUtil.validateRegisterForm(username, email, password, confirmPassword);
+    try {
+      argon2.hash(password, { hashLength: 32 }).then(function (hash) {
+        pool.query('INSERT INTO USERS (username, email, password) VALUES (?, ?, ?)', [username, email, hash],
+          function (error, results) {
+            if (error) {
+              if (error.code === "ER_DUP_ENTRY") {
+                logger.warn("Failed to register new user with duplicate username.");
+                return res.redirect('/register-login?errorType=registrationError&errorCode=DuplicateUsername');
+              }
+              else {
+                logger.error("Error while adding new user to table: " + error);
+                return res.redirect('/register-login?errorType=registrationError&errorCode=UnknownError');
+              }
+            }
+            else if (results.insertId) {
+              // Add user ID to session
+              req.session.userId = results.insertId;
+              return res.redirect('/poker');
+            }
+          });
+      }.bind(this));
+    }
+    catch (error) {
+      logger.error("Error while hashing password using argon2:");
+      throw error;
+    }
+  }
+  catch (error) {
+    // Error when validating username, email or password
+    res.redirect('/register-login?errorType=registrationError&errorCode=' + error.message);
+  }
+});
+
+app.post('/logout', redirectLogin, (req, res) => {
+  req.session.destroy(error => {
+    if (error) {
+      return res.redirect('/');
+    }
+
+    res.clearCookie(SESSION_NAME);
+    res.redirect('/register-login');
+  });
+});
+
+app.get('/poker', redirectLogin, (req, res) => {
+  res.sendFile(__dirname + '/client/poker.html');
+});
+
+const pokerUtil = require('./server/pokerUtil');
 
 var publicGameList = {};
 for (let i = 1; i <= 2; i++) {
@@ -29,12 +164,10 @@ for (let i = 1; i <= 2; i++) {
   publicGameList[id] = publicGame;
 }
 
-var io = require('socket.io')(serv, {});
 io.sockets.on('connection', function (socket) {
   logger.info('Socket with ID ' + socket.id + ' connected to the server.');
-  // TODO the parameters below will need to be retreived from MySQL
-  socket.name = socket.id.substring(0, 10);
-  socket.wallet = 10000;
+  socket.name = socket.id;
+  socket.wallet = 0;
   socket.currentGame = null;
 
   socket.on('joinTable', async (data) => {
@@ -369,3 +502,5 @@ function socketInsideValidGame(socket) {
   }
   return inGame;
 }
+
+server.listen(APPLICATION_PORT, () => logger.info('Server started on port ' + APPLICATION_PORT));
