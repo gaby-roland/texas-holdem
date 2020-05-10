@@ -1,10 +1,11 @@
 'use strict';
 const express = require('express');
 const session = require('express-session');
+const socketIOSession = require('express-socket.io-session');
 const helmet = require('helmet');
 const log4js = require('log4js');
 const secureUtil = require('./server/secureUtil');
-const pool = require('./server/database');
+const database = require('./server/database');
 const argon2 = require('argon2');
 
 const logger = log4js.getLogger();
@@ -20,8 +21,7 @@ const {
 
 const IN_PRODUCTION = NODE_ENV === 'production';
 
-const app = express();
-app.use(session({
+const sessionMiddleware = session({
   name: SESSION_NAME,
   resave: false,
   saveUninitialized: false,
@@ -32,14 +32,15 @@ app.use(session({
     sameSite: true,
     secure: IN_PRODUCTION
   }
-}));
+});
 
+const app = express();
+app.use(sessionMiddleware);
 app.use(helmet());
 app.use(express.static(__dirname + '/client'));
 app.use(express.urlencoded({ extended: true }));
 
 const server = require('http').Server(app);
-const io = require('socket.io')(server);
 
 const redirectLogin = (req, res, next) => {
   if (!req.session || !req.session.userId) {
@@ -75,15 +76,16 @@ app.get('/register-login', redirectPoker, (req, res) => {
 
 app.post('/login', redirectPoker, (req, res) => {
   const { username, password } = req.body;
-  pool.query('SELECT * FROM users WHERE username = ?', [username],
+  database.getUserByUsername(username,
     async function (error, results) {
       if (error) {
         logger.warn("Error while querying the database to log in: " + error);
         res.redirect('/register-login?errorType=loginError&errorCode=UnknownError');
       }
-      if (results.length != 0) {
+      if (results.length > 0) {
         try {
           if (await argon2.verify(results[0].password, password)) {
+            req.session.username = results[0].username;
             req.session.userId = results[0].id;
             return res.redirect('/poker');
           }
@@ -109,12 +111,12 @@ app.post('/register', redirectPoker, (req, res) => {
     secureUtil.validateRegisterForm(username, email, password, confirmPassword);
     try {
       argon2.hash(password, { hashLength: 32 }).then(function (hash) {
-        pool.query('INSERT INTO USERS (username, email, password) VALUES (?, ?, ?)', [username, email, hash],
+        database.addUser(username, email, hash,
           function (error, results) {
             if (error) {
               if (error.code === "ER_DUP_ENTRY") {
-                logger.warn("Failed to register new user with duplicate username.");
-                return res.redirect('/register-login?errorType=registrationError&errorCode=DuplicateUsername');
+                logger.warn("Failed to register new user with duplicate username/email.");
+                return res.redirect('/register-login?errorType=registrationError&errorCode=InvalidCredentials');
               }
               else {
                 logger.error("Error while adding new user to table: " + error);
@@ -123,7 +125,15 @@ app.post('/register', redirectPoker, (req, res) => {
             }
             else if (results.insertId) {
               // Add user ID to session
+              req.session.username = username;
               req.session.userId = results.insertId;
+              // Grant new users 10,000 chips to get started
+              database.addUserInfo(results.insertId, 10000,
+                function (error, results) {
+                  if (error) {
+                    logger.error("Error while adding user to user_info table: " + error);
+                  }
+                });
               return res.redirect('/poker');
             }
           });
@@ -158,17 +168,28 @@ app.get('/poker', redirectLogin, (req, res) => {
 const pokerUtil = require('./server/pokerUtil');
 
 var publicGameList = {};
-for (let i = 1; i <= 2; i++) {
+for (let i = 1; i <= 25; i++) {
   let id = "publicGame" + i;
   let publicGame = pokerUtil.createNewGame(id);
   publicGameList[id] = publicGame;
 }
 
+const io = require('socket.io')(server);
+io.use(socketIOSession(sessionMiddleware, { autoSave: true }));
+io.use(function (socket, next) {
+  if (!socket.handshake.session.userId) {
+    next(new Error('User not authenticated!'));
+  }
+  else {
+    socket.name = socket.handshake.session.username;
+    socket.userId = socket.handshake.session.userId;
+    socket.wallet = 10000;
+    socket.currentGame = null;
+    next();
+  }
+});
 io.sockets.on('connection', function (socket) {
   logger.info('Socket with ID ' + socket.id + ' connected to the server.');
-  socket.name = socket.id;
-  socket.wallet = 0;
-  socket.currentGame = null;
 
   socket.on('joinTable', async (data) => {
     try {
@@ -181,7 +202,7 @@ io.sockets.on('connection', function (socket) {
             var game = publicGameList[socket.currentGame];
             game.addSocketToGame(socket);
             updateGameState(game);
-            logger.info('User ' + socket.name + ' joined table publicGame1.');
+            logger.info('User ' + socket.name + ' joined table publicGame' + socket.currentGame + '.');
           }
           else {
             logger.warn('User ' + socket.name + ' tried to join an invalid game.');

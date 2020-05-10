@@ -26,24 +26,14 @@
                 </div>
             </div>
         </div>
-        <div id="public-or-private" class="button-container">
-            <div>
-                <button class="button" @click="displayPublicGames">Join Public Game</button>
+        <div id="public-table" class="button-container">
+            <div v-for="index in 25" :index="index">
+                <button class="button" @click="joinTable" :value="index">Join Table {{ index }}</button>
             </div>
-            <div>
-                <button class="button" @click="displayPrivateGames">Create Private Game</button>
-            </div>
-        </div>
-        <div id="public-table" class="button-container" style="display:none;">
-            <div>
-                <button class="back-button" @click="displayPublicOrPrivate"><span>Back</span></button>
-            </div>
-            <div>
-                <button class="button" @click="joinTable" value="1">Join Table 1</button>
-            </div>
-            <div>
-                <button class="button" @click="joinTable" value="2">Join Table 2</button>
-            </div>
+            <form action="/logout" method="POST">
+                <input type="submit" class="back-button" style="width: 208px; background-color: #f44336;"
+                    value="Logout">
+            </form>
         </div>
         <div id="table" class="table" style="display:none;">
             <div class="card-place">
@@ -132,10 +122,14 @@
                 <button id="raise-button" class="button" :style="raiseStyle" @click="raise"><span>Raise</span></button>
             </div>
             <textarea id="log-box" readonly></textarea>
+            <form action="/logout" method="POST">
+                <input type="submit" class="back-button" style="width: 208px; background-color: #f44336;"
+                    value="Logout">
+            </form>
         </div>
     </div>
 </body>
 
-<script src="js/main.js"></script>
+<script src="js/poker.js"></script>
 
 </html>

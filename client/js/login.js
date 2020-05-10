@@ -61,8 +61,8 @@ if (errorCode && errorCode != '') {
   else if (errorCode === "PasswordCharacters") {
     app.alertBody = "Password needs more special characters.";
   }
-  else if (errorCode === "DuplicateUsername") {
-    app.alertBody = "This username already exists. Please choose another and try again.";
+  else if (errorCode === "InvalidCredentials") {
+    app.alertBody = "Please choose another username/email and try again.";
   }
   else if (errorCode === "InvalidLogin") {
     app.alertBody = "Incorrect username/password.";

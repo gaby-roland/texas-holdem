@@ -31,26 +31,8 @@ let app = new Vue({
     }
   },
   methods: {
-    displayPublicOrPrivate: function (event) {
-      document.getElementById('public-or-private').style.display = 'inline-block';
-      document.getElementById('public-table').style.display = 'none';
-      document.getElementById('table').style.display = 'none';
-      document.getElementById('player-moves').style.display = 'none';
-    },
-
-    displayPublicGames: function (event) {
-      document.getElementById('public-or-private').style.display = 'none';
-      document.getElementById('public-table').style.display = 'inline-block';
-      document.getElementById('table').style.display = 'none';
-      document.getElementById('player-moves').style.display = 'none';
-    },
-
-    displayPrivateGames: function (event) {
-      console.log('create_private');
-    },
-
     leaveTable: function (event) {
-      document.getElementById('public-or-private').style.display = 'none';
+      document.getElementById("log-box").value = "";
       document.getElementById('public-table').style.display = 'inline-block';
       document.getElementById('table').style.display = 'none';
       document.getElementById('player-moves').style.display = 'none';
@@ -58,7 +40,6 @@ let app = new Vue({
     },
 
     joinTable: function (event) {
-      document.getElementById('public-or-private').style.display = 'none';
       document.getElementById('public-table').style.display = 'none';
       document.getElementById('table').style.display = 'inline-block';
       document.getElementById('player-moves').style.display = 'inline-block';

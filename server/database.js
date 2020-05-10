@@ -25,13 +25,30 @@ pool.getConnection((err, connection) => {
     connection.query(`CREATE TABLE IF NOT EXISTS users (
                         id INT NOT NULL AUTO_INCREMENT,
                         username VARCHAR(32) NOT NULL UNIQUE,
-                        email VARCHAR(256) NOT NULL,
+                        email VARCHAR(256) NOT NULL UNIQUE,
                         password VARCHAR(256) NOT NULL,
-                        PRIMARY KEY(id, username))`,
+                        PRIMARY KEY(id))`,
+      function (error) {
+        if (error) {
+          connection.release();
+          logger.error('Error creating users table');
+          throw error;
+        }
+      });
+
+    connection.query(`CREATE TABLE IF NOT EXISTS user_info (
+                        id INT NOT NULL,
+                        balance INT NOT NULL default 0,
+                        wins INT NOT NULL default 0,
+                        losses INT NOT NULL default 0,
+                        draws INT NOT NULL default 0,
+                        PRIMARY KEY(id),
+                        FOREIGN KEY(id) references users(id)
+                        ON DELETE CASCADE);`,
       function (error) {
         connection.release();
         if (error) {
-          logger.error('Error creating users table');
+          logger.error('Error creating user_info table');
           throw error;
         }
       });
@@ -40,4 +57,52 @@ pool.getConnection((err, connection) => {
 
 pool.query = promisify(pool.query);
 
-module.exports = pool;
+module.exports = {
+  getUserInfoByUserId: function (userId, callback) {
+    pool.query('SELECT * FROM USER_INFO WHERE ID = ?', [userId],
+      function (error, results) {
+        if (error) {
+          callback(error, results);
+        }
+        else {
+          callback(null, results);
+        }
+      });
+  },
+
+  getUserByUsername: function (username, callback) {
+    pool.query('SELECT * FROM users WHERE username = ?', [username],
+      function (error, results) {
+        if (error) {
+          callback(error, results);
+        }
+        else {
+          callback(null, results);
+        }
+      });
+  },
+
+  addUser: function (username, email, password, callback) {
+    pool.query('INSERT INTO USERS (username, email, password) VALUES (?, ?, ?)', [username, email, password],
+      function (error, results) {
+        if (error) {
+          callback(error, results);
+        }
+        else {
+          callback(null, results);
+        }
+      });
+  },
+
+  addUserInfo: function (userId, initialBalance, callback) {
+    pool.query('INSERT INTO USER_INFO (id, balance) VALUES (?, ?)', [userId, initialBalance],
+      function (error, results) {
+        if (error) {
+          callback(error, results);
+        }
+        else {
+          callback(null, results);
+        }
+      });
+  }
+};
