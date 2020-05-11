@@ -59,7 +59,7 @@ pool.query = promisify(pool.query);
 
 module.exports = {
   getUserInfoByUserId: function (userId, callback) {
-    pool.query('SELECT * FROM USER_INFO WHERE ID = ?', [userId],
+    pool.query('SELECT * FROM user_info WHERE ID = ?', [userId],
       function (error, results) {
         if (error) {
           callback(error, results);
@@ -83,7 +83,7 @@ module.exports = {
   },
 
   addUser: function (username, email, password, callback) {
-    pool.query('INSERT INTO USERS (username, email, password) VALUES (?, ?, ?)', [username, email, password],
+    pool.query('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', [username, email, password],
       function (error, results) {
         if (error) {
           callback(error, results);
@@ -95,7 +95,7 @@ module.exports = {
   },
 
   addUserInfo: function (userId, initialBalance, callback) {
-    pool.query('INSERT INTO USER_INFO (id, balance) VALUES (?, ?)', [userId, initialBalance],
+    pool.query('INSERT INTO user_info (id, balance) VALUES (?, ?)', [userId, initialBalance],
       function (error, results) {
         if (error) {
           callback(error, results);
