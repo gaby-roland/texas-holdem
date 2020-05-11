@@ -217,7 +217,6 @@ io.sockets.on('connection', function (socket) {
         }
       }
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
@@ -237,7 +236,6 @@ io.sockets.on('connection', function (socket) {
       }
       socket.currentGame = null;
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
@@ -263,7 +261,6 @@ io.sockets.on('connection', function (socket) {
         }
       }
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
@@ -282,7 +279,6 @@ io.sockets.on('connection', function (socket) {
       }
       logger.info('User ' + socket.name + ' is spectating.');
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       soc * ket.emit('alert', {
         header: "Too many requests!",
@@ -303,7 +299,6 @@ io.sockets.on('connection', function (socket) {
         }
       }
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
@@ -321,7 +316,6 @@ io.sockets.on('connection', function (socket) {
         game.updateGameState();
       }
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
@@ -339,7 +333,6 @@ io.sockets.on('connection', function (socket) {
         game.updateGameState();
       }
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
@@ -357,7 +350,6 @@ io.sockets.on('connection', function (socket) {
         game.updateGameState();
       }
     } catch (rejection) {
-      throw (rejection);
       logger.warn('Rate limiter blocked user ' + socket.name + '. Consumed points: ' + rejection.consumedPoints);
       socket.emit('alert', {
         header: "Too many requests!",
