@@ -1,5 +1,3 @@
-var socket = io();
-
 let app = new Vue({
   el: '.login-register-container',
   data: {

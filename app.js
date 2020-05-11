@@ -30,7 +30,6 @@ const sessionMiddleware = session({
   cookie: {
     maxAge: SESSION_IDLE_TIMEOUT,
     sameSite: true,
-    secure: IN_PRODUCTION
   }
 });
 
