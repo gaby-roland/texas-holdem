@@ -12,6 +12,8 @@ Vue.component('card', {
 let app = new Vue({
   el: '.vue-container',
   data: {
+    playerName: "",
+    playerWallet: "",
     playerTurn: 0,
     players: [],
     communityCards: [],
@@ -35,14 +37,14 @@ let app = new Vue({
   methods: {
     leaveTable: function (event) {
       document.getElementById("log-box").value = "";
-      document.getElementById('public-table').style.display = 'inline-block';
+      document.getElementById('player-dashboard').style.display = 'inline-block';
       document.getElementById('table').style.display = 'none';
       document.getElementById('player-moves').style.display = 'none';
       socket.emit('leaveTable');
     },
 
     joinTable: function (event) {
-      document.getElementById('public-table').style.display = 'none';
+      document.getElementById('player-dashboard').style.display = 'none';
       document.getElementById('table').style.display = 'inline-block';
       document.getElementById('player-moves').style.display = 'inline-block';
       socket.emit('joinTable', {
@@ -139,6 +141,11 @@ function updateRaiseButtonState() {
   }
 }
 
+socket.on('userInfo', function (data) {
+  app.playerName = data.playerName;
+  app.playerWallet = data.playerWallet;
+});
+
 // Get the modal
 var modal = document.getElementById("alertModal");
 
@@ -151,7 +158,6 @@ span.onclick = function () {
 }
 
 socket.on('alert', function (data) {
-  //alert("Too many requests! Try again in " + data.wait + " ms.");
   app.alertHeader = data.header;
   app.alertBody = data.message;
   modal.style.display = "block";

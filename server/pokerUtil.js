@@ -1,4 +1,5 @@
 'use strict';
+const database = require('./database');
 const Hand = require('pokersolver').Hand;
 const randomNumber = require('random-number-csprng');
 const Promise = require('bluebird');
@@ -9,6 +10,7 @@ logger.level = 'info';
 class Player {
   constructor(user, balance) {
     this.user = user;
+    this.originalBalance = balance;
     this.balance = balance;
     this.chipsOnTable = 0;
     this.cardsInHand = [];
@@ -18,6 +20,7 @@ class Player {
   }
 
   resetGameParameters() {
+    this.originalBalance = this.balance;
     this.chipsOnTable = 0;
     this.cardsInHand = [];
     this.playedTheirTurn = false;
@@ -480,7 +483,12 @@ class Game {
           logger.info("Player " + player.user.name + ' won $' + this.potAmount);
           this.logForUsers += "Player " + player.user.name + ' won $' + this.potAmount + '.\n';
           player.balance += this.potAmount;
-          break;
+          database.incrementUserWins(player.user.handshake.session.userId);
+        }
+        var change = player.originalBalance - player.balance;
+        if (change != 0) {
+          database.updateUserBalance(change, player.user.handshake.session.userId);
+          player.user.wallet += change;
         }
       }
     }
@@ -502,7 +510,10 @@ class Game {
             logger.info("Player " + competingPlayers[i].user.name + " won $" + this.potAmount + " with: " + winningHands[0].descr);
             this.logForUsers += "Player " + competingPlayers[i].user.name + ' won $' + this.potAmount + " with: " + winningHands[0].descr + '.\n';
             competingPlayers[i].balance += this.potAmount;
-            break;
+            database.incrementUserWins(competingPlayers[i].user.handshake.session.userId);
+          }
+          else {
+            database.incrementUserLosses(competingPlayers[i].user.handshake.session.userId);
           }
         }
       }
@@ -515,7 +526,10 @@ class Game {
               logger.info("Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr);
               this.logForUsers += "Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr + '.\n';
               competingPlayers[j].balance += splitPot;
-              break;
+              database.incrementUserDraws(competingPlayers[j].user.handshake.session.userId);
+            }
+            else {
+              database.incrementUserLosses(competingPlayers[j].user.handshake.session.userId);
             }
           }
         }
@@ -524,6 +538,12 @@ class Game {
         var player = this.players[i];
         if (player.balance == 0) {
           this.removePlayerFromTable(player.user);
+          continue;
+        }
+        var change = player.originalBalance - player.balance;
+        if (change != 0) {
+          database.updateUserBalance(change, player.user.handshake.session.userId);
+          player.user.wallet += change;
         }
       }
     }
@@ -658,6 +678,12 @@ class Game {
       delete this.userToPlayer[user.id];
       if (this.inProgress) {
         this.potAmount += player.chipsOnTable;
+        database.incrementUserLosses(player.user.handshake.session.userId);
+        var change = player.originalBalance - player.balance;
+        if (change != 0) {
+          database.updateUserBalance(change, player.user.handshake.session.userId);
+          player.user.wallet += change;
+        }
       }
       player.resetGameParameters();
       for (let i = 0; i < this.players.length; i++) {

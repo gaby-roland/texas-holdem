@@ -26,14 +26,23 @@
                 </div>
             </div>
         </div>
-        <div id="public-table" class="button-container">
-            <div v-for="index in 25" :index="index">
-                <button class="button" @click="joinTable" :value="index">Join Table {{ index }}</button>
+        <div id="player-dashboard">
+            <div style="text-align:center;border:1px solid red;font-size: 30px;">
+                Welcome, {{ playerName }}! Your wallet balance is ${{ playerWallet }}.
             </div>
-            <form action="/logout" method="POST">
-                <input type="submit" class="back-button" style="width: 208px; background-color: #f44336;"
-                    value="Logout">
-            </form>
+            <div id="public-table" class="button-container">
+                <div style="font-size: 24px;">
+                    Join a table below and start playing.
+                </div>
+                <div v-for="row in 5" :row="row">
+                    <button v-for="column in 5" :column="column" class="button" @click="joinTable"
+                        :value="((row - 1) * 5) + column">Join Table {{ ((row - 1) * 5) + column }}</button>
+                </div>
+                <form action="/logout" method="POST">
+                    <input type="submit" class="back-button" style="width: 208px; background-color: #f44336;"
+                        value="Logout">
+                </form>
+            </div>
         </div>
         <div id="table" class="table" style="display:none;">
             <div class="card-place">

@@ -197,6 +197,10 @@ io.use(function (socket, next) {
 });
 io.sockets.on('connection', function (socket) {
   logger.info('Socket with ID ' + socket.id + ' connected to the server.');
+  socket.emit('userInfo', {
+    playerName: socket.name,
+    playerWallet: socket.wallet
+  });
 
   socket.on('joinTable', async (data) => {
     try {

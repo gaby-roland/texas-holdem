@@ -104,5 +104,21 @@ module.exports = {
           callback(null, results);
         }
       });
+  },
+
+  incrementUserWins: function (userId) {
+    pool.query('UPDATE user_info SET wins = wins + 1 WHERE id = ?', [userId]);
+  },
+
+  incrementUserLosses: function (userId) {
+    pool.query('UPDATE user_info SET losses = losses + 1 WHERE id = ?', [userId]);
+  },
+
+  incrementUserDraws: function (userId) {
+    pool.query('UPDATE user_info SET draws = draws + 1 WHERE id = ?', [userId]);
+  },
+
+  updateUserBalance: function (userId, change) {
+    pool.query('UPDATE user_info SET balance = balance + ? WHERE id = ?', [change, userId]);
   }
 };
