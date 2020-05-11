@@ -487,7 +487,7 @@ class Game {
         }
         var change = player.originalBalance - player.balance;
         if (change != 0) {
-          database.updateUserBalance(change, player.user.handshake.session.userId);
+          database.updateUserBalance(player.user.handshake.session.userId, change);
           player.user.wallet += change;
         }
       }
@@ -542,7 +542,7 @@ class Game {
         }
         var change = player.originalBalance - player.balance;
         if (change != 0) {
-          database.updateUserBalance(change, player.user.handshake.session.userId);
+          database.updateUserBalance(player.user.handshake.session.userId, change);
           player.user.wallet += change;
         }
       }
@@ -681,7 +681,7 @@ class Game {
         database.incrementUserLosses(player.user.handshake.session.userId);
         var change = player.originalBalance - player.balance;
         if (change != 0) {
-          database.updateUserBalance(change, player.user.handshake.session.userId);
+          database.updateUserBalance(player.user.handshake.session.userId, change);
           player.user.wallet += change;
         }
       }
