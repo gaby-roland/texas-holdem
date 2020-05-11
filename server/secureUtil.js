@@ -3,7 +3,7 @@ const { RateLimiterMemory } = require("rate-limiter-flexible");
 
 const minPasswordLength = 12;
 // Allow letters and numbers with - or _ somewhere in the middle
-const usernamePattern = /^[A-Za-z0-9]+[_|-]*[A-Za-z0-9]+$/;
+const usernamePattern = /^[A-Za-z0-9]+[_|-]*[A-Za-z0-9]{4,14}$/;
 // Typical email pattern name@domain.com
 const emailPattern = /^[A-Za-z0-9_\-.]+@[A-Za-z0-9_\-.]+(\.[A-Za-z]{2,5})+$/;
 // Password have upper/lower case letters, numbers, and a handful of symbols

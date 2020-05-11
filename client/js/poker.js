@@ -15,6 +15,8 @@ let app = new Vue({
     playerTurn: 0,
     players: [],
     communityCards: [],
+    currentBet: 0,
+    chipsOnTable: 0,
     amount: 25,
     callAmount: 0,
     alertHeader: "",
@@ -81,6 +83,7 @@ socket.on('gameState', function (data) {
   app.players = data.players;
   app.communityCards = data.communityCards;
   app.playerTurn = data.playerTurn;
+  app.currentBet = data.currentBet;
 
   if (data.log != null && data.log != "") {
     var logBox = document.getElementById("log-box");
@@ -98,11 +101,12 @@ socket.on('gameState', function (data) {
     document.getElementById('fold-button').classList.add('disabled');
   }
   else {
-    app.callAmount = data.currentBet - data.thisPlayer.chipsOnTable;
+    app.chipsOnTable = data.thisPlayer.chipsOnTable;
+    app.callAmount = app.currentBet - app.chipsOnTable;
     document.getElementById('play-button').classList.add('disabled');
     document.getElementById('spectate-button').classList.remove('disabled');
 
-    if (data.playerTurn != null && data.players[data.playerTurn] != null && data.players[data.playerTurn].name == data.thisPlayer.name) {
+    if (data.inProgress && data.playerTurn != null && data.players[data.playerTurn] != null && data.players[data.playerTurn].name == data.thisPlayer.name) {
       document.getElementById('fold-button').classList.remove('disabled');
       document.getElementById('raise-amount').disabled = false;
       if (data.currentBet > data.thisPlayer.chipsOnTable) {
@@ -114,12 +118,7 @@ socket.on('gameState', function (data) {
         document.getElementById('call-button').classList.add('disabled');
       }
 
-      if (app.amount != null && app.amount > (data.currentBet - data.thisPlayer.chipsOnTable)) {
-        document.getElementById('raise-button').classList.remove('disabled');
-      }
-      else {
-        document.getElementById('raise-button').classList.add('disabled');
-      }
+      updateRaiseButtonState();
     }
     else {
       document.getElementById('raise-button').classList.add('disabled');
@@ -132,7 +131,12 @@ socket.on('gameState', function (data) {
 });
 
 function updateRaiseButtonState() {
-
+  if (app.amount != null && app.amount > (app.currentBet - app.chipsOnTable)) {
+    document.getElementById('raise-button').classList.remove('disabled');
+  }
+  else {
+    document.getElementById('raise-button').classList.add('disabled');
+  }
 }
 
 // Get the modal

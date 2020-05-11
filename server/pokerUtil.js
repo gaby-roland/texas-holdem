@@ -42,11 +42,12 @@ class Game {
     this.currentDeck;
     this.dealerPosition;
     this.playerTurn;
-    this.communityCards;
-    this.potAmount;
-    this.currentBet;
+    this.communityCards = [];
+    this.potAmount = 0;
+    this.currentBet = 0;
     this.logForUsers = "";
     this.timerId;
+    this.timeout = 30000;
     this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
   }
 
@@ -142,6 +143,153 @@ class Game {
   }
 
   /**
+  * Updates the state of the game.
+  */
+  updateGameState() {
+    if (this.players.length >= 2) {
+      if (!this.inProgress) {
+        this.resetGame();
+        this.resetAllPlayers();
+
+        this.completedRounds.started = true;
+        generateNewShuffledDeck().then(function (newDeck) {
+          this.currentDeck = newDeck;
+          this.dealHands();
+
+          if (this.smallBlindPlayer.balance <= this.smallBlind) {
+            this.smallBlindPlayer.chipsOnTable = this.smallBlindPlayer.balance;
+            this.smallBlindPlayer.balance = 0;
+            this.smallBlindPlayer.allIn = true;
+            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlindPlayer.chipsOnTable + ' small blind.\n';
+          }
+          else {
+            this.smallBlindPlayer.chipsOnTable = this.smallBlind;
+            this.smallBlindPlayer.balance -= this.smallBlind;
+            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlind + ' small blind.\n';
+          }
+
+          if (this.bigBlindPlayer.balance <= this.bigBlind) {
+            this.bigBlindPlayer.chipsOnTable = this.bigBlindPlayer.balance;
+            this.bigBlindPlayer.balance = 0;
+            this.bigBlindPlayer.allIn = true;
+            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlindPlayer.chipsOnTable + ' big blind.\n';
+          }
+          else {
+            this.bigBlindPlayer.chipsOnTable = this.bigBlind;
+            this.bigBlindPlayer.balance -= this.bigBlind;
+            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlind + ' big blind.\n';
+          }
+
+          this.currentBet = this.bigBlind;
+          this.timerId = setTimeout(() => {
+            this.removePlayerFromTable(this.players[this.playerTurn].user);
+            this.timerId = null;
+            this.updateGameState();
+          }, this.timeout);
+          this.sendInfoToClients();
+        }.bind(this));
+      }
+      else if (this.activePlayers < 2) {
+        this.roundUpBets()
+        this.concludeGame();
+        this.completedRounds.concluded = true;
+        setTimeout(() => {
+          this.updateGameState()
+        }, 3000);
+      }
+      else if (this.bettingRoundCompleted) {
+        this.roundUpBets();
+        if (this.activePlayers - this.allInPlayers > 1) {
+          this.resetBettingRound()
+        }
+
+        if (!this.completedFlop) {
+          this.dealFlop();
+          this.completedRounds.flop = true;
+        }
+        else if (!this.completedTurn) {
+          this.dealTurn();
+          this.completedRounds.turn = true;
+        }
+        else if (!this.completedRiver) {
+          this.dealRiver();
+          this.completedRounds.river = true;
+        }
+        else {
+          this.concludeGame();
+          this.completedRounds.concluded = true;
+          setTimeout(() => {
+            this.updateGameState()
+          }, 3000);
+        }
+      }
+    }
+    else if (this.inProgress) {
+      this.roundUpBets()
+      this.concludeGame();
+      this.completedRounds.concluded = true;
+      setTimeout(() => {
+        this.updateGameState()
+      }, 3000);
+    }
+
+    this.sendInfoToClients();
+  }
+
+  sendInfoToClients() {
+    for (let i = 0; i < this.sockets.length; i++) {
+      var players = [];
+      var thisPlayer = null;
+      var socket = this.sockets[i];
+      for (let j = 0; j < this.players.length; j++) {
+        var player = this.players[j];
+        if (socket == player.user) {
+          players.push({
+            name: player.user.name,
+            color: "",
+            hand: player.cardsInHand,
+            bank: player.balance,
+            onTable: player.chipsOnTable,
+            hasCards: true
+          });
+
+          thisPlayer = {
+            name: player.user.name,
+            chipsOnTable: player.chipsOnTable
+          };
+        }
+        else {
+          var playerHand = null;
+          if (player.cardsInHand.length == 2) {
+            playerHand = [{ suit: "Hidden", value: null }, { suit: "Hidden", value: null }];
+          }
+          players.push({
+            name: player.user.name,
+            color: "gray",
+            hand: playerHand,
+            bank: player.balance,
+            onTable: player.chipsOnTable,
+            hasCards: true
+          });
+        }
+      }
+
+      socket.emit('gameState', {
+        players: players,
+        thisPlayer: thisPlayer,
+        communityCards: this.communityCards,
+        playerTurn: this.playerTurn,
+        currentBet: this.currentBet,
+        inProgress: this.inProgress,
+        log: this.logForUsers
+      });
+    }
+
+    // Clear all user logs from games since they've been sent to users
+    this.logForUsers = "";
+  }
+
+  /**
    * Deal 1 card to each player until each player has 2 cards. Remove dealt cards from original deck.
    */
   dealHands() {
@@ -195,6 +343,12 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet < player.chipsOnTable + amount) {
+          if (this.timerId) {
+            console.log("removing timer");
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
+
           var maxBet = player.balance + player.chipsOnTable;
           for (let i = 0; i < this.players.length; i++) {
             if (this.players[i].balance + this.players[i].chipsOnTable < maxBet) {
@@ -235,13 +389,18 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet > player.chipsOnTable) {
+          if (this.timerId) {
+            console.log("removing timer");
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
+
           var amount;
           if ((this.currentBet - player.chipsOnTable) >= player.balance) {
             amount = player.balance;
             player.allIn = true;
             logger.info("Player " + player.user.name + ' called and went all-in with $' + (player.chipsOnTable + amount) + '.');
             this.logForUsers += "Player " + player.user.name + ' called (all-in) with $' + (player.chipsOnTable + amount) + '.\n';
-
           }
           else {
             amount = (this.currentBet - player.chipsOnTable);
@@ -266,6 +425,12 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.currentBet == player.chipsOnTable) {
+          if (this.timerId) {
+            console.log("removing timer");
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
+
           logger.info("Player " + player.user.name + ' checked.');
           this.logForUsers += "Player " + player.user.name + ' checked.\n';
           player.playedTheirTurn = true;
@@ -282,6 +447,12 @@ class Game {
     if (user.id in this.userToPlayer) {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
+        if (this.timerId) {
+          console.log("removing timer");
+          clearTimeout(this.timerId);
+          this.timerId = null;
+        }
+
         logger.info("Player " + player.user.name + ' folded.');
         this.logForUsers += "Player " + player.user.name + ' folded.\n';
         player.cardsInHand = [];
@@ -295,6 +466,12 @@ class Game {
    * Finish the game. Determine winner and reset player hand/bets in preparation for next game.
    */
   concludeGame() {
+    if (this.timerId) {
+      console.log("removing timer");
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+
     logger.info("Game ended.");
     if (this.activePlayers == 1) {
       for (let i = 0; i < this.players.length; i++) {
@@ -358,6 +535,12 @@ class Game {
   * Reset the hand. This includes resetting the pot, current bet, game state, and emptying the deck of cards.
   */
   resetGame() {
+    if (this.timerId) {
+      console.log("removing timer");
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+
     this.currentDeck = [];
     this.communityCards = [];
     this.potAmount = 0;
@@ -430,6 +613,13 @@ class Game {
     if (this.playerTurn >= this.players.length) {
       this.playerTurn = 0;
     }
+
+    // Create timeout for next player
+    this.timerId = setTimeout(() => {
+      this.removePlayerFromTable(this.players[this.playerTurn].user);
+      this.timerId = null;
+      this.updateGameState();
+    }, this.timeout);
   }
 
   /**
@@ -525,6 +715,43 @@ class Game {
 }
 
 /**
+* Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
+* Shuffles the new deck using a cryptographically secure pseudo-random number generator.
+* @return {Array} New deck of cards containing 52 cards.
+*/
+async function generateNewShuffledDeck() {
+  var suits = ['S', 'H', 'C', 'D'];
+  var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  var newDeck = [];
+  for (let suit of suits) {
+    for (let value of values) {
+      newDeck.push({
+        suit: suit,
+        value: value
+      })
+    }
+  }
+
+  const promises = [];
+  // Asynchronously generate an array of random numbers using a CSPRNG
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    promises.push(randomNumber(0, i));
+  }
+
+  const randomNumbers = await Promise.all(promises);
+
+  // Apply durstenfeld shuffle with previously generated random numbers
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    const j = randomNumbers[newDeck.length - i - 1];
+    const temp = newDeck[i];
+    newDeck[i] = newDeck[j];
+    newDeck[j] = temp;
+  }
+
+  return newDeck;
+}
+
+/**
  * Get a player's full hand (2 cards in hand + 5 on the table).
  * This returns the list required for the poker solver module to evaluate all the hands.
  * @param {Array} playerCards list containing 2 player cards (value and suit)
@@ -561,42 +788,5 @@ module.exports = {
    */
   createNewGame: function (id) {
     return new Game(id);
-  },
-
-  /**
-  * Generate a new deck of cards containing all 13 values in 4 suits (52 total cards).
-  * Shuffles the new deck using a cryptographically secure pseudo-random number generator.
-  * @return {Array} New deck of cards containing 52 cards.
-  */
-  generateNewShuffledDeck: async function () {
-    var suits = ['S', 'H', 'C', 'D'];
-    var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-    var newDeck = [];
-    for (let suit of suits) {
-      for (let value of values) {
-        newDeck.push({
-          suit: suit,
-          value: value
-        })
-      }
-    }
-
-    const promises = [];
-    // Asynchronously generate an array of random numbers using a CSPRNG
-    for (let i = newDeck.length - 1; i > 0; i--) {
-      promises.push(randomNumber(0, i));
-    }
-
-    const randomNumbers = await Promise.all(promises);
-
-    // Apply durstenfeld shuffle with previously generated random numbers
-    for (let i = newDeck.length - 1; i > 0; i--) {
-      const j = randomNumbers[newDeck.length - i - 1];
-      const temp = newDeck[i];
-      newDeck[i] = newDeck[j];
-      newDeck[j] = temp;
-    }
-
-    return newDeck;
   }
 }

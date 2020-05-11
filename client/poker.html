@@ -118,7 +118,7 @@
             </div>
             <div>
                 <input type="number" pattern="[0-9]" id="raise-amount" class="raise-amount" v-model="amount" step="25"
-                    min="25" placeholder="Amount" required>
+                    min="25" placeholder="Amount" onchange="updateRaiseButtonState()" required>
                 <button id="raise-button" class="button" :style="raiseStyle" @click="raise"><span>Raise</span></button>
             </div>
             <textarea id="log-box" readonly></textarea>
