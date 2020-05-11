@@ -1,5 +1,5 @@
 const promisify = require('util.promisify');
-const mySql = require('mySql');
+const mySql = require('mysql');
 const log4js = require('log4js');
 
 const logger = log4js.getLogger();
