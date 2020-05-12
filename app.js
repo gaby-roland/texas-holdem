@@ -361,6 +361,19 @@ io.sockets.on('connection', function (socket) {
     }
   });
 
+  socket.on('getLeaderboard', function () {
+    database.getLeaderboard(function (error, results) {
+      if (error) {
+        logger.warn("The database threw an error while fetching the leaderboard: " + error);
+      }
+      else if (results.length > 0) {
+        socket.emit('leaderboard', {
+          leaderboard: results
+        });
+      }
+    });
+  });
+
   socket.on('disconnect', function () {
     if (socketInsideValidGame(socket)) {
       var game = publicGameList[socket.currentGame]

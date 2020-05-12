@@ -22,7 +22,8 @@ let app = new Vue({
     amount: 25,
     callAmount: 0,
     alertHeader: "",
-    alertBody: ""
+    alertBody: "",
+    leaderboard: []
   },
   computed: {
     callStyle() {
@@ -35,9 +36,23 @@ let app = new Vue({
     }
   },
   methods: {
+    getLeaderboard: function (event) {
+      socket.emit('getLeaderboard');
+      document.getElementById('player-dashboard').style.display = 'none';
+      document.getElementById('leaderboard').style.display = 'inline-block';
+      document.getElementById('table').style.display = 'none';
+      document.getElementById('player-moves').style.display = 'none';
+    },
+    backToDashboard: function () {
+      document.getElementById('player-dashboard').style.display = 'inline-block';
+      document.getElementById('leaderboard').style.display = 'none';
+      document.getElementById('table').style.display = 'none';
+      document.getElementById('player-moves').style.display = 'none';
+    },
     leaveTable: function (event) {
       document.getElementById("log-box").value = "";
       document.getElementById('player-dashboard').style.display = 'inline-block';
+      document.getElementById('leaderboard').style.display = 'none';
       document.getElementById('table').style.display = 'none';
       document.getElementById('player-moves').style.display = 'none';
       socket.emit('leaveTable');
@@ -45,6 +60,7 @@ let app = new Vue({
 
     joinTable: function (event) {
       document.getElementById('player-dashboard').style.display = 'none';
+      document.getElementById('leaderboard').style.display = 'none';
       document.getElementById('table').style.display = 'inline-block';
       document.getElementById('player-moves').style.display = 'inline-block';
       socket.emit('joinTable', {
@@ -145,6 +161,12 @@ socket.on('userInfo', function (data) {
   app.playerName = data.playerName;
   app.playerWallet = data.playerWallet;
 });
+
+socket.on('leaderboard', function (data) {
+  console.log(data.leaderboard);
+  app.leaderboard = data.leaderboard;
+  console.log(app.leaderboard);
+})
 
 // Get the modal
 var modal = document.getElementById("alertModal");

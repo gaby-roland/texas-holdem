@@ -186,7 +186,9 @@ class Game {
 
           this.currentBet = this.bigBlind;
           this.timerId = setTimeout(() => {
-            this.removePlayerFromTable(this.players[this.playerTurn].user);
+            if (this.players[this.playerTurn]) {
+              this.removePlayerFromTable(this.players[this.playerTurn].user);
+            }
             this.timerId = null;
             this.updateGameState();
           }, this.timeout);
@@ -639,7 +641,9 @@ class Game {
 
     // Create timeout for next player
     this.timerId = setTimeout(() => {
-      this.removePlayerFromTable(this.players[this.playerTurn].user);
+      if (this.players[this.playerTurn]) {
+        this.removePlayerFromTable(this.players[this.playerTurn].user);
+      }
       this.timerId = null;
       this.updateGameState();
     }, this.timeout);

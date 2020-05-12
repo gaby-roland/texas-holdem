@@ -38,11 +38,41 @@
                     <button v-for="column in 5" :column="column" class="button" @click="joinTable"
                         :value="((row - 1) * 5) + column">Join Table {{ ((row - 1) * 5) + column }}</button>
                 </div>
-                <form action="/logout" method="POST">
-                    <input type="submit" class="back-button" style="width: 208px; background-color: #f44336;"
-                        value="Logout">
-                </form>
+                <div>
+                    <button class="button" style="width: 208px; background-color: #4CAF50;"
+                        @click="getLeaderboard">Leaderboard</button>
+                    <form action="/logout" method="POST">
+                        <input type="submit" class="back-button" style="width: 208px; background-color: #f44336;"
+                            value="Logout">
+                    </form>
+                </div>
             </div>
+        </div>
+        <div id="leaderboard" style="display:none;">
+            <div style="text-align:center;border:1px solid red;font-size: 30px;">
+                Leaderboard.
+            </div>
+            <div>
+                <table>
+                    <tr>
+                        <th>Player</th>
+                        <th>Wins</th>
+                        <th>Losses</th>
+                        <th>Draws</th>
+                    </tr>
+                    <tr v-for="(player, index) in leaderboard">
+                        <td>{{ player.user }}</td>
+                        <td>{{ player.wins }}</td>
+                        <td>{{ player.losses }}</td>
+                        <td>{{ player.draws }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <button id="back-button" class="back-button" style="width: 208px;"
+                    @click="backToDashboard"><span>Back</span></button>
+            </div>
+
         </div>
         <div id="table" class="table" style="display:none;">
             <div class="card-place">
