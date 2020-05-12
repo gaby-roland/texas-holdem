@@ -13,7 +13,7 @@ logger.level = 'info';
 
 const {
   APPLICATION_PORT = 2000,
-  NODE_ENV = 'development',
+  NODE_ENV = 'production',
   SESSION_NAME = 'sid',
   SESSION_SECRET = 'FU11H0U53',
   SESSION_IDLE_TIMEOUT = 1000 * 60 * 60 * 2, // Two hours
@@ -187,7 +187,7 @@ io.use(function (socket, next) {
     next(new Error('User not authenticated!'));
   }
   else {
-    database.getUserBalance(socket.userId,
+    database.getUserBalance(socket.handshake.session.userId,
       function (error, result) {
         if (!error && result) {
           socket.wallet = result;
