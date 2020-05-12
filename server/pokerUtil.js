@@ -199,9 +199,9 @@ class Game {
         this.roundUpBets()
         this.revealHands = true;
         this.timerId = setTimeout(() => {
+          this.timerId = null;
           this.concludeGame();
           this.completedRounds.concluded = true;
-          this.timerId = null;
           this.updateGameState();
         }, 5000);
       }
@@ -226,9 +226,9 @@ class Game {
         else {
           this.revealHands = true;
           this.timerId = setTimeout(() => {
+            this.timerId = null;
             this.concludeGame();
             this.completedRounds.concluded = true;
-            this.timerId = null;
             this.updateGameState()
           }, 5000);
         }
@@ -490,7 +490,7 @@ class Game {
           player.balance += this.potAmount;
           database.incrementUserWins(player.user.handshake.session.userId);
         }
-        var change = player.originalBalance - player.balance;
+        var change = player.balance - player.originalBalance;
         if (change != 0) {
           database.updateUserBalance(player.user.handshake.session.userId, change);
           player.user.wallet += change;
@@ -545,7 +545,7 @@ class Game {
           this.removePlayerFromTable(player.user);
           continue;
         }
-        var change = player.originalBalance - player.balance;
+        var change = player.balance - player.originalBalance;
         if (change != 0) {
           database.updateUserBalance(player.user.handshake.session.userId, change);
           player.user.wallet += change;
@@ -606,7 +606,8 @@ class Game {
     return this.inProgress
       && player.playingCurrentHand == true
       && player.playedTheirTurn == false
-      && player == this.players[this.playerTurn];
+      && player == this.players[this.playerTurn]
+      && !this.revealHands;
   }
 
   /**
@@ -686,7 +687,7 @@ class Game {
       if (this.inProgress) {
         this.potAmount += player.chipsOnTable;
         database.incrementUserLosses(player.user.handshake.session.userId);
-        var change = player.originalBalance - player.balance;
+        var change = player.balance - player.originalBalance;
         if (change != 0) {
           database.updateUserBalance(player.user.handshake.session.userId, change);
           player.user.wallet += change;

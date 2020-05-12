@@ -187,11 +187,16 @@ io.use(function (socket, next) {
     next(new Error('User not authenticated!'));
   }
   else {
-    socket.name = socket.handshake.session.username;
-    socket.userId = socket.handshake.session.userId;
-    socket.wallet = 10000;
-    socket.currentGame = null;
-    next();
+    database.getUserBalance(socket.userId,
+      function (error, result) {
+        if (!error && result) {
+          socket.wallet = result;
+          socket.name = socket.handshake.session.username;
+          socket.userId = socket.handshake.session.userId;
+          socket.currentGame = null;
+          next();
+        }
+      });
   }
 });
 io.sockets.on('connection', function (socket) {
@@ -236,6 +241,10 @@ io.sockets.on('connection', function (socket) {
         game.removePlayerFromTable(socket);
         game.removeSocketFromGame(socket);
         game.updateGameState();
+        socket.emit('userInfo', {
+          playerName: socket.name,
+          playerWallet: socket.wallet
+        });
       }
       socket.currentGame = null;
     } catch (rejection) {

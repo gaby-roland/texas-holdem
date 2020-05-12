@@ -122,6 +122,18 @@ module.exports = {
     pool.query('UPDATE user_info SET balance = balance + ? WHERE id = ?', [change, userId]);
   },
 
+  getUserBalance: function (userId, callback) {
+    pool.query('SELECT balance from user_info WHERE id = ?', [userId],
+      function (error, results) {
+        if (error) {
+          callback(error, results);
+        }
+        else if (results.length > 0) {
+          callback(null, results[0].balance);
+        }
+      });
+  },
+
   getLeaderboard: function (callback) {
     pool.query(`SELECT users.username as user, user_info.wins as wins, user_info.losses as losses, user_info.draws as draws
                 FROM users, user_info
