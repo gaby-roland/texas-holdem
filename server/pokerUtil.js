@@ -51,6 +51,7 @@ class Game {
     this.logForUsers = "";
     this.timerId;
     this.timeout = 30000;
+    this.revealHands = false;
     this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
   }
 
@@ -150,7 +151,7 @@ class Game {
   */
   updateGameState() {
     if (this.players.length >= 2) {
-      if (!this.inProgress) {
+      if (!this.inProgress && !this.timerId) {
         this.resetGame();
         this.resetAllPlayers();
 
@@ -194,11 +195,13 @@ class Game {
       }
       else if (this.activePlayers < 2) {
         this.roundUpBets()
-        this.concludeGame();
-        this.completedRounds.concluded = true;
-        setTimeout(() => {
-          this.updateGameState()
-        }, 3000);
+        this.revealHands = true;
+        this.timerId = setTimeout(() => {
+          this.concludeGame();
+          this.completedRounds.concluded = true;
+          this.timerId = null;
+          this.updateGameState();
+        }, 5000);
       }
       else if (this.bettingRoundCompleted) {
         this.roundUpBets();
@@ -219,21 +222,20 @@ class Game {
           this.completedRounds.river = true;
         }
         else {
-          this.concludeGame();
-          this.completedRounds.concluded = true;
-          setTimeout(() => {
+          this.revealHands = true;
+          this.timerId = setTimeout(() => {
+            this.concludeGame();
+            this.completedRounds.concluded = true;
+            this.timerId = null;
             this.updateGameState()
-          }, 3000);
+          }, 5000);
         }
       }
     }
     else if (this.inProgress) {
-      this.roundUpBets()
+      this.roundUpBets();
       this.concludeGame();
       this.completedRounds.concluded = true;
-      setTimeout(() => {
-        this.updateGameState()
-      }, 3000);
     }
 
     this.sendInfoToClients();
@@ -264,7 +266,13 @@ class Game {
         else {
           var playerHand = null;
           if (player.cardsInHand.length == 2) {
-            playerHand = [{ suit: "Hidden", value: null }, { suit: "Hidden", value: null }];
+            if (this.revealHands) {
+              playerHand = player.cardsInHand;
+            }
+            else {
+              playerHand = [{ suit: "Hidden", value: null }, { suit: "Hidden", value: null }];
+            }
+
           }
           players.push({
             name: player.user.name,
@@ -347,7 +355,6 @@ class Game {
       if (this.playerCanPlay(player)) {
         if (this.currentBet < player.chipsOnTable + amount) {
           if (this.timerId) {
-            console.log("removing timer");
             clearTimeout(this.timerId);
             this.timerId = null;
           }
@@ -393,7 +400,6 @@ class Game {
       if (this.playerCanPlay(player)) {
         if (this.currentBet > player.chipsOnTable) {
           if (this.timerId) {
-            console.log("removing timer");
             clearTimeout(this.timerId);
             this.timerId = null;
           }
@@ -429,7 +435,6 @@ class Game {
       if (this.playerCanPlay(player)) {
         if (this.currentBet == player.chipsOnTable) {
           if (this.timerId) {
-            console.log("removing timer");
             clearTimeout(this.timerId);
             this.timerId = null;
           }
@@ -451,7 +456,6 @@ class Game {
       var player = this.userToPlayer[user.id];
       if (this.playerCanPlay(player)) {
         if (this.timerId) {
-          console.log("removing timer");
           clearTimeout(this.timerId);
           this.timerId = null;
         }
@@ -470,7 +474,6 @@ class Game {
    */
   concludeGame() {
     if (this.timerId) {
-      console.log("removing timer");
       clearTimeout(this.timerId);
       this.timerId = null;
     }
@@ -556,7 +559,6 @@ class Game {
   */
   resetGame() {
     if (this.timerId) {
-      console.log("removing timer");
       clearTimeout(this.timerId);
       this.timerId = null;
     }
@@ -565,6 +567,7 @@ class Game {
     this.communityCards = [];
     this.potAmount = 0;
     this.currentBet = 0;
+    this.revealHands = false;
     this.completedRounds = { started: false, flop: false, turn: false, river: false, concluded: false };
 
     if (this.dealerPosition == null) {
