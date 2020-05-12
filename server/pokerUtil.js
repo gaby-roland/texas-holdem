@@ -291,6 +291,7 @@ class Game {
         players: players,
         thisPlayer: thisPlayer,
         communityCards: this.communityCards,
+        potAmount: this.potAmount,
         playerTurn: this.playerTurn,
         currentBet: this.currentBet,
         inProgress: this.inProgress,

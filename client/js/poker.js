@@ -17,6 +17,7 @@ let app = new Vue({
     playerTurn: 0,
     players: [],
     communityCards: [],
+    potAmount: 0,
     currentBet: 0,
     chipsOnTable: 0,
     amount: 25,
@@ -98,6 +99,7 @@ let app = new Vue({
 });
 
 socket.on('gameState', function (data) {
+  app.potAmount = data.potAmount;
   app.players = data.players;
   app.communityCards = data.communityCards;
   app.playerTurn = data.playerTurn;
