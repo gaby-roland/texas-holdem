@@ -13,7 +13,7 @@ logger.level = 'info';
 
 const {
   APPLICATION_PORT = 2000,
-  NODE_ENV = 'production',
+  NODE_ENV = 'development',
   SESSION_NAME = 'sid',
   SESSION_SECRET = 'FU11H0U53',
   SESSION_IDLE_TIMEOUT = 1000 * 60 * 60 * 2, // Two hours

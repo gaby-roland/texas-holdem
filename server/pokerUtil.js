@@ -151,7 +151,7 @@ class Game {
   */
   updateGameState() {
     if (this.players.length >= 2) {
-      if (!this.inProgress && !this.timerId) {
+      if (!this.inProgress) {
         this.resetGame();
         this.resetAllPlayers();
 
@@ -185,23 +185,30 @@ class Game {
           }
 
           this.currentBet = this.bigBlind;
+          if (this.timerId) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
           this.timerId = setTimeout(() => {
+            this.timerId = null;
             if (this.players[this.playerTurn]) {
               this.removePlayerFromTable(this.players[this.playerTurn].user);
             }
-            this.timerId = null;
             this.updateGameState();
           }, this.timeout);
           this.sendInfoToClients();
         }.bind(this));
       }
       else if (this.activePlayers < 2) {
-        this.roundUpBets()
-        this.revealHands = true;
+        this.roundUpBets();
+        this.concludeGame();
+        this.completedRounds.concluded = true;
+        if (this.timerId) {
+          clearTimeout(this.timerId);
+          this.timerId = null;
+        }
         this.timerId = setTimeout(() => {
           this.timerId = null;
-          this.concludeGame();
-          this.completedRounds.concluded = true;
           this.updateGameState();
         }, 5000);
       }
@@ -225,12 +232,20 @@ class Game {
         }
         else {
           this.revealHands = true;
+          if (this.timerId) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
+          }
           this.timerId = setTimeout(() => {
             this.timerId = null;
             this.concludeGame();
             this.completedRounds.concluded = true;
-            this.updateGameState()
+            this.updateGameState();
           }, 5000);
+        }
+
+        if (this.activePlayers - this.allInPlayers < 2 && !this.revealHands) {
+          this.updateGameState();
         }
       }
     }
@@ -642,6 +657,10 @@ class Game {
     }
 
     // Create timeout for next player
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
     this.timerId = setTimeout(() => {
       if (this.players[this.playerTurn]) {
         this.removePlayerFromTable(this.players[this.playerTurn].user);
