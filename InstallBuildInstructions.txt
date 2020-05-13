@@ -1,0 +1,239 @@
+#!/usr/bin/bash
+
+# Use Debian/Buster - only Distribution this has been tested on, others are likely to work as well
+if [[ ! $(grep buster /etc/apt/sources.list) ]];then
+	echo Please use Debian/Buster;
+	exit(1)
+fi
+
+# Start with an updated system
+if [[ $UID != 0 ]]; then 
+	echo Please run this script as root
+	exit(2)
+fi
+
+# Set up firewalling
+echo "Set default drop: INPUT, OUTPUT, FORWARD for ipv6"
+ip6tables -P INPUT DROP
+ip6tables -P OUTPUT DROP
+ip6tables -P FORWARD DROP
+
+echo "Permit loopback traffic but block traffic directly to tcp port 2000 and 3306"
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 2000 -j DROP
+iptables -A INPUT -p tcp -m tcp --dport 3306 -j DROP
+iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Start with a patched system
+apt update
+apt -y dist-upgrade
+
+# Install needed software
+apt -y install nginx vim iptables-persistent nodejs certbot python-certbot-nginx mariadb-server git
+
+# Display IP address on server
+IP=$(ifconfig | grep inet | awk '{print $2}' | grep -v 127.0.0.1)
+echo "This server's IP address is:" $IP
+echo -e "\nPlease ensure this IP address matches the host & domain you will use."
+
+# Prompt user for domain
+#!/usr/bin/bash
+while true; do
+        read -p "Please enter the host & domain name you have registered to this IP: " FQDN
+        echo "You've entered:" $FQDN
+        echo -n "Does" $FQDN 
+        read -p " look correct? Y/N " PROMPT
+        if [[ $PROMPT == 'Y' ]]; then 
+                break
+        fi  
+done
+echo Using $FQDN ....  if this is wrong... shame on you! You are the admin of this system.
+
+
+###################
+# configure nginx #
+###################
+
+# Back up orginal config
+mv /etc/nginx/nginx.conf{,.org}
+
+# Create a new nginx config
+cat > /etc/nginx/nginx.conf << "EOF"
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+        # Game project mod # 
+        worker_connections 200; # Added for security, limit the number of open connections
+}
+
+http {
+        # Basic Settings #
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        # SSL Settings # 
+        #ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+        ssl_protocols TLSv1.2; # additionally removed TLSv1 TLSv1.1
+        ssl_prefer_server_ciphers on;
+
+        # Logging Settings # 
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+
+        # Gzip Settings # 
+        gzip on;
+
+        # Virtual Host Configs #
+        include /etc/nginx/conf.d/*.conf;
+        include /etc/nginx/sites-enabled/*;
+
+        # Other Security Changes for Game Project #
+        # Source: https://geekflare.com/nginx-webserver-security-hardening-guide/
+        add_header X-Frame-Options "SAMEORIGIN";        # Inject X-FRAME-OPTIONS in HTTP Header to prevent a clickjacking attack
+        add_header X-XSS-Protection "1; mode=block";    # Inject HTTP Header with X-XSS protection to mitigate Cross-Site scripting attack
+        # Prevent Buffer Overflows
+        ##buffer policy
+        client_body_buffer_size 1K;
+        client_header_buffer_size 1k;
+        client_max_body_size 1k;
+        large_client_header_buffers 2 1k;
+}
+EOF
+
+# Create an available site config
+cat > /etc/nginx/sites-available/$FQDN << "EOF"
+limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+server {
+        listen 80;
+        return 301 https://swe681.hopto.org;
+}
+
+server {
+        # Block version of nginx from being viewed 
+        server_tokens off;
+        # Enable HTTP Strict Transport Security
+        add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload"; 
+
+        listen  443 ssl;
+        server_name swe681.hopto.org;
+
+        ssl_certificate     /etc/letsencrypt/live/swe681.hopto.org/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/swe681.hopto.org/privkey.pem;
+        ssl_dhparam     /etc/nginx/ssl/dhparams.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_ciphers EECDH+AESGCM:EDH+AESGCM;
+        ssl_prefer_server_ciphers on;
+
+        root /var/www/swe681.hopto.org;
+        index index.php index.html index.htm;
+
+        location / { 
+                # Provide some DDoS protection by limiting the number of connections from a client to 10
+                limit_conn addr 10;
+
+                # Deny all connection types except GET|HEAD|POSTS, Limit Available Methods
+                add_header Allow "GET, POST, HEAD" always;
+                if ( $request_method !~ ^(GET|HEAD|POST)$ ) {
+                        return 405;
+                }
+
+                # Deny Automated User-Agents
+                if ($http_user_agent ~* LWP::Simple|BBBike|wget) {
+                        return 403;
+                }
+
+                proxy_pass http://127.0.0.1:2000;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header Host $http_host;
+                proxy_set_header X-NginX-Proxy true;
+                proxy_redirect off;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+        }
+}
+EOF
+
+# Set site to enabled
+ln -s /etc/nginx/sites-available/$FQDN /etc/nginx/sites-enabled/FQDN
+
+# Test & reload
+nginx -t
+systemctl reload nginx
+systemctl enable nginx
+
+###########
+# certbot #
+###########
+mkdir -p /var/www/$FQDN
+cd /var/www/$FQDN
+cp ../html/index.nginx-debian.html .
+
+# Request a cert from LetsEncrypt
+certbot certonly --nginx -nd
+
+###################
+# configure mysql #
+###################
+echo Please accept the default "Y" for all the following prompts throughte mysql_secure_installation configuration.
+echo Please enter a strong password for your root password when prompted.
+mysql_secure_installation
+#Set root password? [Y/n] 
+#New password:
+#Remove anonymous users? [Y/n] 
+#Disallow root login remotely? [Y/n]
+#Remove test database and access to it? [Y/n]
+#Reload privilege tables now? [Y/n]
+
+echo "Configuring MySQL database. Please enter your MySQL root password when prompted."
+mysql -u root -p
+CREATE DATABASE texas_holdem;
+USE texas_holdem;
+CREATE USER 'poker_app'@'localhost' IDENTIFIED BY 'Creative#Face&Masks72';
+GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,ALTER,INDEX,REFERENCES on texas_holdem.* TO 'poker_app'@'localhost';
+flush privileges;
+exit
+
+##################
+# pull node code #
+##################
+mkdir -p /opt/node/
+cd /opt/node/
+git clone https://github.com/gaby-roland/texas-holdem.git
+cd texas-holdem
+echo "Installing node dependencies"
+npm install
+
+###################
+# Auto Start Node #
+###################
+mkdir -p /opt/bin
+
+echo "Creating a node service script"
+cat > /opt/bin/serviceNodeStart.sh << "EOF"
+#!/usr/bin/bash
+while true; do
+        if [[ ! $(pgrep node) ]]; then
+                sudo -u nobody node /opt/node/texas-holdem/app.js
+        fi
+done
+EOF
+
+echo "Setting execution bit in script"
+chmod +x /opt/bin/serviceNodeStart.sh
+
+echo "Setting script to start on boot"
+echo "@reboot /opt/bin/serviceNodeStart.sh" >> /var/spool/cron/crontabs/root
+
+
