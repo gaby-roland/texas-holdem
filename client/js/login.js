@@ -35,6 +35,9 @@ if (errorCode && errorCode != '') {
   if (errorCode === "UsernameInvalid") {
     app.alertBody = "Username contains illegal character.";
   }
+  else if (errorCode === "UsernameTooShort") {
+    app.alertBody = "Username is too short.";
+  }
   else if (errorCode === "EmailInvalid") {
     app.alertBody = "Are you sure that's a valid email address?";
   }

@@ -19,6 +19,9 @@ const twoSpecialCharacters = /[_\-.!#@$&\[\]].*[_\-.!#@$&\[\]]/;
 
 module.exports = {
   validateRegisterForm: function (username, email, password, confirmPassword) {
+    if (username.length < 4 || username.length > 15) {
+      throw new Error("UsernameTooShort");
+    }
     if (!username.match(usernamePattern)) {
       throw new Error("UsernameInvalid");
     }

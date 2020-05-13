@@ -410,4 +410,8 @@ function socketInsideValidGame(socket) {
   return inGame;
 }
 
+<<<<<<< Updated upstream
 server.listen(APPLICATION_PORT, () => logger.info("Server started on port " + APPLICATION_PORT));
+=======
+server.listen(APPLICATION_PORT, () => logger.info('Server started on port ' + APPLICATION_PORT));
+>>>>>>> Stashed changes
