@@ -1,27 +1,27 @@
-const promisify = require('util.promisify');
-const mySql = require('mysql');
-const log4js = require('log4js');
+const promisify = require("util.promisify");
+const mySql = require("mysql");
+const log4js = require("log4js");
 
 const logger = log4js.getLogger();
-logger.level = 'info';
+logger.level = "info";
 
 // Create pool connections
 const pool = mySql.createPool({
   connectionLimit: 10,
-  host: 'localhost',
-  user: 'poker_app',
-  password: 'Creative#Face&Masks72',
-  database: 'texas_holdem'
+  host: "localhost",
+  user: "poker_app",
+  password: "Creative#Face&Masks72",
+  database: "texas_holdem"
 });
 
 // Attempt to connect to the database and create required tables (if they do not exist)
 pool.getConnection((err, connection) => {
   if (err) {
-    logger.error('Error connecting to the database');
+    logger.error("Error connecting to the database");
     throw err;
   }
   else if (connection) {
-    logger.info('Connection to the database has been established.');
+    logger.info("Connection to the database has been established.");
     connection.query(`CREATE TABLE IF NOT EXISTS users (
                         id INT NOT NULL AUTO_INCREMENT,
                         username VARCHAR(32) NOT NULL UNIQUE,
@@ -31,7 +31,7 @@ pool.getConnection((err, connection) => {
       function (error) {
         if (error) {
           connection.release();
-          logger.error('Error creating users table');
+          logger.error("Error creating users table");
           throw error;
         }
       });
@@ -48,7 +48,7 @@ pool.getConnection((err, connection) => {
       function (error) {
         connection.release();
         if (error) {
-          logger.error('Error creating user_info table');
+          logger.error("Error creating user_info table");
           throw error;
         }
       });
@@ -59,7 +59,7 @@ pool.query = promisify(pool.query);
 
 module.exports = {
   getUserInfoByUserId: function (userId, callback) {
-    pool.query('SELECT * FROM user_info WHERE ID = ?', [userId],
+    pool.query("SELECT * FROM user_info WHERE ID = ?", [userId],
       function (error, results) {
         if (error) {
           callback(error, results);
@@ -71,7 +71,7 @@ module.exports = {
   },
 
   getUserByUsername: function (username, callback) {
-    pool.query('SELECT * FROM users WHERE username = ?', [username],
+    pool.query("SELECT * FROM users WHERE username = ?", [username],
       function (error, results) {
         if (error) {
           callback(error, results);
@@ -83,7 +83,7 @@ module.exports = {
   },
 
   addUser: function (username, email, password, callback) {
-    pool.query('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', [username, email, password],
+    pool.query("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", [username, email, password],
       function (error, results) {
         if (error) {
           callback(error, results);
@@ -95,7 +95,7 @@ module.exports = {
   },
 
   addUserInfo: function (userId, initialBalance, callback) {
-    pool.query('INSERT INTO user_info (id, balance) VALUES (?, ?)', [userId, initialBalance],
+    pool.query("INSERT INTO user_info (id, balance) VALUES (?, ?)", [userId, initialBalance],
       function (error, results) {
         if (error) {
           callback(error, results);
@@ -107,23 +107,23 @@ module.exports = {
   },
 
   incrementUserWins: function (userId) {
-    pool.query('UPDATE user_info SET wins = wins + 1 WHERE id = ?', [userId]);
+    pool.query("UPDATE user_info SET wins = wins + 1 WHERE id = ?", [userId]);
   },
 
   incrementUserLosses: function (userId) {
-    pool.query('UPDATE user_info SET losses = losses + 1 WHERE id = ?', [userId]);
+    pool.query("UPDATE user_info SET losses = losses + 1 WHERE id = ?", [userId]);
   },
 
   incrementUserDraws: function (userId) {
-    pool.query('UPDATE user_info SET draws = draws + 1 WHERE id = ?', [userId]);
+    pool.query("UPDATE user_info SET draws = draws + 1 WHERE id = ?", [userId]);
   },
 
   updateUserBalance: function (userId, change) {
-    pool.query('UPDATE user_info SET balance = balance + ? WHERE id = ?', [change, userId]);
+    pool.query("UPDATE user_info SET balance = balance + ? WHERE id = ?", [change, userId]);
   },
 
   getUserBalance: function (userId, callback) {
-    pool.query('SELECT balance from user_info WHERE id = ?', [userId],
+    pool.query("SELECT balance from user_info WHERE id = ?", [userId],
       function (error, results) {
         if (error) {
           callback(error, results);

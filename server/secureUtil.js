@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 
 const minPasswordLength = 12;

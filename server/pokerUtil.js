@@ -1,11 +1,11 @@
-'use strict';
-const database = require('./database');
-const Hand = require('pokersolver').Hand;
-const randomNumber = require('random-number-csprng');
-const Promise = require('bluebird');
-const log4js = require('log4js');
+"use strict";
+const database = require("./database");
+const Hand = require("pokersolver").Hand;
+const randomNumber = require("random-number-csprng");
+const Promise = require("bluebird");
+const log4js = require("log4js");
 const logger = log4js.getLogger();
-logger.level = 'info';
+logger.level = "info";
 
 class Player {
   constructor(user, balance) {
@@ -99,7 +99,7 @@ class Game {
   }
 
   /**
-  * Returns the number of players actively playing the current hand (e.g. hasn't folded).
+  * Returns the number of players actively playing the current hand (e.g. hasn"t folded).
   */
   get activePlayers() {
     var players = 0;
@@ -164,24 +164,24 @@ class Game {
             this.smallBlindPlayer.chipsOnTable = this.smallBlindPlayer.balance;
             this.smallBlindPlayer.balance = 0;
             this.smallBlindPlayer.allIn = true;
-            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlindPlayer.chipsOnTable + ' small blind.\n';
+            this.logForUsers += "Player " + this.smallBlindPlayer.user.name + " posted $" + this.smallBlindPlayer.chipsOnTable + " small blind.\n";
           }
           else {
             this.smallBlindPlayer.chipsOnTable = this.smallBlind;
             this.smallBlindPlayer.balance -= this.smallBlind;
-            this.logForUsers += 'Player ' + this.smallBlindPlayer.user.name + ' posted $' + this.smallBlind + ' small blind.\n';
+            this.logForUsers += "Player " + this.smallBlindPlayer.user.name + " posted $" + this.smallBlind + " small blind.\n";
           }
 
           if (this.bigBlindPlayer.balance <= this.bigBlind) {
             this.bigBlindPlayer.chipsOnTable = this.bigBlindPlayer.balance;
             this.bigBlindPlayer.balance = 0;
             this.bigBlindPlayer.allIn = true;
-            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlindPlayer.chipsOnTable + ' big blind.\n';
+            this.logForUsers += "Player " + this.bigBlindPlayer.user.name + " posted $" + this.bigBlindPlayer.chipsOnTable + " big blind.\n";
           }
           else {
             this.bigBlindPlayer.chipsOnTable = this.bigBlind;
             this.bigBlindPlayer.balance -= this.bigBlind;
-            this.logForUsers += 'Player ' + this.bigBlindPlayer.user.name + ' posted $' + this.bigBlind + ' big blind.\n';
+            this.logForUsers += "Player " + this.bigBlindPlayer.user.name + " posted $" + this.bigBlind + " big blind.\n";
           }
 
           this.currentBet = this.bigBlind;
@@ -302,7 +302,7 @@ class Game {
         }
       }
 
-      socket.emit('gameState', {
+      socket.emit("gameState", {
         players: players,
         thisPlayer: thisPlayer,
         communityCards: this.communityCards,
@@ -314,7 +314,7 @@ class Game {
       });
     }
 
-    // Clear all user logs from games since they've been sent to users
+    // Clear all user logs from games since they"ve been sent to users
     this.logForUsers = "";
   }
 
@@ -388,14 +388,14 @@ class Game {
           }
 
           if (amount == player.balance) {
-            logger.info("Player " + player.user.name + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.');
-            this.logForUsers += 'Player ' + player.user.name + ' went all-in with $' + (player.chipsOnTable + player.balance) + '.\n';
+            logger.info("Player " + player.user.name + " went all-in with $" + (player.chipsOnTable + player.balance) + ".");
+            this.logForUsers += "Player " + player.user.name + " went all-in with $" + (player.chipsOnTable + player.balance) + ".\n";
             amount = player.balance;
             player.allIn = true;
           }
           else {
-            logger.info("Player " + player.user.name + ' raised to $' + (player.chipsOnTable + amount) + '.');
-            this.logForUsers += "Player " + player.user.name + ' raised to $' + (player.chipsOnTable + amount) + '.\n';
+            logger.info("Player " + player.user.name + " raised to $" + (player.chipsOnTable + amount) + ".");
+            this.logForUsers += "Player " + player.user.name + " raised to $" + (player.chipsOnTable + amount) + ".\n";
           }
           this.currentBet = player.chipsOnTable + amount;
           player.chipsOnTable = this.currentBet;
@@ -426,13 +426,13 @@ class Game {
           if ((this.currentBet - player.chipsOnTable) >= player.balance) {
             amount = player.balance;
             player.allIn = true;
-            logger.info("Player " + player.user.name + ' called and went all-in with $' + (player.chipsOnTable + amount) + '.');
-            this.logForUsers += "Player " + player.user.name + ' called (all-in) with $' + (player.chipsOnTable + amount) + '.\n';
+            logger.info("Player " + player.user.name + " called and went all-in with $" + (player.chipsOnTable + amount) + ".");
+            this.logForUsers += "Player " + player.user.name + " called (all-in) with $" + (player.chipsOnTable + amount) + ".\n";
           }
           else {
             amount = (this.currentBet - player.chipsOnTable);
-            logger.info("Player " + player.user.name + ' called $' + (player.chipsOnTable + amount) + '.');
-            this.logForUsers += "Player " + player.user.name + ' called $' + (player.chipsOnTable + amount) + '.\n';
+            logger.info("Player " + player.user.name + " called $" + (player.chipsOnTable + amount) + ".");
+            this.logForUsers += "Player " + player.user.name + " called $" + (player.chipsOnTable + amount) + ".\n";
           }
 
           player.balance -= amount;
@@ -457,8 +457,8 @@ class Game {
             this.timerId = null;
           }
 
-          logger.info("Player " + player.user.name + ' checked.');
-          this.logForUsers += "Player " + player.user.name + ' checked.\n';
+          logger.info("Player " + player.user.name + " checked.");
+          this.logForUsers += "Player " + player.user.name + " checked.\n";
           player.playedTheirTurn = true;
           this.nextPlayerTurn();
         }
@@ -478,8 +478,8 @@ class Game {
           this.timerId = null;
         }
 
-        logger.info("Player " + player.user.name + ' folded.');
-        this.logForUsers += "Player " + player.user.name + ' folded.\n';
+        logger.info("Player " + player.user.name + " folded.");
+        this.logForUsers += "Player " + player.user.name + " folded.\n";
         player.cardsInHand = [];
         player.playedTheirTurn = true;
         player.playingCurrentHand = false;
@@ -501,8 +501,8 @@ class Game {
       for (let i = 0; i < this.players.length; i++) {
         var player = this.players[i];
         if (player.playingCurrentHand) {
-          logger.info("Player " + player.user.name + ' won $' + this.potAmount);
-          this.logForUsers += "Player " + player.user.name + ' won $' + this.potAmount + '.\n';
+          logger.info("Player " + player.user.name + " won $" + this.potAmount);
+          this.logForUsers += "Player " + player.user.name + " won $" + this.potAmount + ".\n";
           player.balance += this.potAmount;
           database.incrementUserWins(player.user.handshake.session.userId);
         }
@@ -529,7 +529,7 @@ class Game {
         for (let i = 0; i < hands.length; i++) {
           if (hands[i] == winningHands[0]) {
             logger.info("Player " + competingPlayers[i].user.name + " won $" + this.potAmount + " with: " + winningHands[0].descr);
-            this.logForUsers += "Player " + competingPlayers[i].user.name + ' won $' + this.potAmount + " with: " + winningHands[0].descr + '.\n';
+            this.logForUsers += "Player " + competingPlayers[i].user.name + " won $" + this.potAmount + " with: " + winningHands[0].descr + ".\n";
             competingPlayers[i].balance += this.potAmount;
             database.incrementUserWins(competingPlayers[i].user.handshake.session.userId);
           }
@@ -545,7 +545,7 @@ class Game {
           for (let j = 0; j < hands.length; j++) {
             if (hands[j] == winningHands[i]) {
               logger.info("Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr);
-              this.logForUsers += "Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr + '.\n';
+              this.logForUsers += "Player " + competingPlayers[j].user.name + " won $" + splitPot + " with: " + winningHands[i].descr + ".\n";
               competingPlayers[j].balance += splitPot;
               database.incrementUserDraws(competingPlayers[j].user.handshake.session.userId);
             }
@@ -605,7 +605,7 @@ class Game {
   }
 
   /**
-  * Reset each player's state and toggle on their playingCurrentHand variable.
+  * Reset each player"s state and toggle on their playingCurrentHand variable.
   */
   resetAllPlayers() {
     for (let j = 0; j < this.players.length; j++) {
@@ -686,13 +686,13 @@ class Game {
       this.userToPlayer[user.id] = player;
       if (this.players.length < this.playerLimit) {
         this.players.push(player);
-        logger.info('Player ' + player.user.name + ' joined the table.');
-        this.logForUsers += 'Player ' + player.user.name + ' joined the table.\n';
+        logger.info("Player " + player.user.name + " joined the table.");
+        this.logForUsers += "Player " + player.user.name + " joined the table.\n";
       }
       else {
         this.waitingList.push(player);
-        logger.info('Player ' + player.user.name + ' added to queue.');
-        this.logForUsers += 'Player ' + player.user.name + ' is waiting to join.\n';
+        logger.info("Player " + player.user.name + " added to queue.");
+        this.logForUsers += "Player " + player.user.name + " is waiting to join.\n";
       }
     }
   }
@@ -726,8 +726,8 @@ class Game {
           break;
         }
       }
-      logger.info('Player ' + player.user.name + ' left the table.');
-      this.logForUsers += 'Player ' + player.user.name + ' left the table.\n';
+      logger.info("Player " + player.user.name + " left the table.");
+      this.logForUsers += "Player " + player.user.name + " left the table.\n";
       this.checkQueue();
     }
   }
@@ -739,8 +739,8 @@ class Game {
     while (this.players.length < this.playerLimit && this.waitingList.length > 0) {
       var firstPlayerInQueue = this.waitingList.shift();
       this.players.push(firstPlayerInQueue);
-      logger.info('Player ' + firstPlayerInQueue.user.name + ' moved from queue to table.');
-      this.logForUsers += 'Player ' + firstPlayerInQueue.user.name + ' joined the table.\n';
+      logger.info("Player " + firstPlayerInQueue.user.name + " moved from queue to table.");
+      this.logForUsers += "Player " + firstPlayerInQueue.user.name + " joined the table.\n";
     }
   }
 
@@ -774,8 +774,8 @@ class Game {
 * @return {Array} New deck of cards containing 52 cards.
 */
 async function generateNewShuffledDeck() {
-  var suits = ['S', 'H', 'C', 'D'];
-  var values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  var suits = ["S", "H", "C", "D"];
+  var values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
   var newDeck = [];
   for (let suit of suits) {
     for (let value of values) {
@@ -806,7 +806,7 @@ async function generateNewShuffledDeck() {
 }
 
 /**
- * Get a player's full hand (2 cards in hand + 5 on the table).
+ * Get a player"s full hand (2 cards in hand + 5 on the table).
  * This returns the list required for the poker solver module to evaluate all the hands.
  * @param {Array} playerCards list containing 2 player cards (value and suit)
  * @param {Array} communityCards list containing 5 community cards (value and suit)
@@ -816,8 +816,8 @@ function getPlayerFullHand(playerCards, communityCards) {
   var fullHand = [];
   for (let j = 0; j < playerCards.length; j++) {
     var value = playerCards[j].value;
-    if (value == '10') {
-      value = 'T'
+    if (value == "10") {
+      value = "T"
     }
     var suit = playerCards[j].suit.toLowerCase();
     fullHand.push(value + suit);
@@ -825,8 +825,8 @@ function getPlayerFullHand(playerCards, communityCards) {
 
   for (let j = 0; j < communityCards.length; j++) {
     var value = communityCards[j].value;
-    if (value == '10') {
-      value = 'T'
+    if (value == "10") {
+      value = "T"
     }
     var suit = communityCards[j].suit.toLowerCase();
     fullHand.push(value + suit);
